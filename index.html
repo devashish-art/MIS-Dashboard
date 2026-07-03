@@ -539,9 +539,15 @@ function renderTrendChart() {
 let ratioChartInstances = {};
 function renderRatiosGrid() {
   const grid = document.getElementById('ratioGrid');
-  const months = selectedMonths.length ? selectedMonths : RAW.months;
-  const month = months[months.length - 1];
-  document.getElementById('ratioMonthNote').textContent = 'Showing ' + month + '. Ratios use the most recent month in your current selection.';
+  const months = selectedMonths;
+  const monthNote = document.getElementById('ratioMonthNote');
+  if (months.length === 0) {
+    monthNote.textContent = 'No months selected. Check at least one month to see ratios.';
+  } else if (months.length === 1) {
+    monthNote.textContent = 'Showing ' + months[0] + '.';
+  } else {
+    monthNote.textContent = 'Cumulative across ' + months.length + ' months: ' + months.join(', ') + '.';
+  }
 
   if (grid.children.length === 0) {
     RATIO_DEFINITIONS.forEach(def => {
@@ -561,16 +567,16 @@ function renderRatiosGrid() {
       labels = numRows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
       data = numRows.map(r => {
         const denomRow = denomRows.find(d => d.label === r.label);
-        const num = r.values[month];
-        const denom = denomRow ? denomRow.values[month] : null;
+        const num = months.length ? sumAcrossMonths(r, months) : null;
+        const denom = denomRow && months.length ? sumAcrossMonths(denomRow, months) : null;
         if (num === null || denom === null || denom === 0) return null;
         return (num / denom) * 100;
       });
     } else {
       const numRow = TOTALS_BY_LABEL[def.totalLabel];
       const denomRow = TOTALS_BY_LABEL['Total Revenue'];
-      const num = numRow ? numRow.values[month] : null;
-      const denom = denomRow ? denomRow.values[month] : null;
+      const num = numRow && months.length ? sumAcrossMonths(numRow, months) : null;
+      const denom = denomRow && months.length ? sumAcrossMonths(denomRow, months) : null;
       labels = ['Overall'];
       data = [(num === null || denom === null || denom === 0) ? null : (num / denom) * 100];
     }
