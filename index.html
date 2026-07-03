@@ -157,7 +157,7 @@
     <button class="tab-btn" data-tab="table">Full Statement</button>
   </div>
 
-  <div class="month-selector" id="monthSelectorBar" style="display:none;">
+  <div class="month-selector" id="monthSelectorBar">
     <div class="month-selector-header">
       <span class="label">Select months</span>
       <div class="range-picker">
@@ -349,24 +349,16 @@ function prevMonth() { return RAW.months.length > 1 ? RAW.months[RAW.months.leng
 function renderKPIs() {
   const grid = document.getElementById('kpiGrid');
   grid.innerHTML = '';
-  const lm = latestMonth();
-  const pm = prevMonth();
+  const months = selectedMonths.length ? selectedMonths : RAW.months;
   KPI_ROWS.forEach(kpi => {
     const row = TOTALS_BY_LABEL[kpi.key];
-    const val = row ? row.values[lm] : null;
-    const prevVal = row && pm ? row.values[pm] : null;
-    let deltaHtml = '';
-    if (val !== null && prevVal !== null && prevVal !== 0) {
-      const pct = ((val - prevVal) / Math.abs(prevVal)) * 100;
-      const up = pct >= 0;
-      deltaHtml = `<span class="kpi-delta ${up ? 'up' : 'down'}">${up ? '↑' : '↓'} ${Math.abs(pct).toFixed(1)}%</span><span class="kpi-context">vs ${pm}</span>`;
-    }
+    const val = row ? sumAcrossMonths(row, months) : null;
     const card = document.createElement('div');
     card.className = 'kpi-card';
-    card.innerHTML = `<div class="kpi-label">${kpi.label}</div><div class="kpi-value">${fmtCurrency(val)}</div>${deltaHtml}`;
+    card.innerHTML = `<div class="kpi-label">${kpi.label}</div><div class="kpi-value">${fmtCurrency(val)}</div>`;
     grid.appendChild(card);
   });
-  document.getElementById('latestMonthBadge').textContent = lm;
+  document.getElementById('latestMonthBadge').textContent = months.length === RAW.months.length ? 'All months' : months.length + ' month' + (months.length === 1 ? '' : 's') + ' selected';
 }
 
 /* ---------- Channel Comparison ---------- */
@@ -695,6 +687,7 @@ function renderMonthSelector() {
 function updateSelectedMonths() {
   const checked = Array.from(document.querySelectorAll('#monthChecks input:checked')).map(i => i.value);
   selectedMonths = RAW.months.filter(m => checked.includes(m));
+  renderKPIs();
   renderTrendChart();
   renderRatioChart();
   renderCumulative();
@@ -702,14 +695,12 @@ function updateSelectedMonths() {
 
 /* ---------- Tabs ---------- */
 function initTabs() {
-  const monthSelectorTabs = ['trend', 'ratios', 'cumulative'];
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-      document.getElementById('monthSelectorBar').style.display = monthSelectorTabs.includes(btn.dataset.tab) ? 'block' : 'none';
     });
   });
 }
