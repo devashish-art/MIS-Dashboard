@@ -622,6 +622,28 @@ function renderCumulativeControls() {
   });
   sel.onchange = renderCumulative;
 }
+function getDisplayRows() {
+  const channelLabels = new Set(CHANNELS);
+  const result = [];
+  let buffer = [];
+  const flush = (endRow) => {
+    const lastIndexForChannel = {};
+    buffer.forEach((r, idx) => { if (channelLabels.has(r.label)) lastIndexForChannel[r.label] = idx; });
+    buffer.forEach((r, idx) => {
+      if (channelLabels.has(r.label) && lastIndexForChannel[r.label] !== idx) return;
+      result.push(r);
+    });
+    if (endRow) result.push(endRow);
+    buffer = [];
+  };
+  RAW.rows.forEach(row => {
+    const marker = GROUP_MARKERS.find(m => m.label === row.label);
+    if (marker) { flush(row); } else { buffer.push(row); }
+  });
+  flush(null);
+  return result;
+}
+
 function renderCumulative() {
   const months = selectedMonths.length ? selectedMonths : RAW.months;
 
@@ -654,7 +676,7 @@ function renderCumulative() {
   head.innerHTML = '<th>Line Item</th><th>Cumulative (' + months.length + ' mo)</th>';
   const body = document.getElementById('cumTableBody');
   body.innerHTML = '';
-  RAW.rows.forEach(row => {
+  getDisplayRows().forEach(row => {
     const isPctRow = row.label.trim().startsWith('%');
     const isTotal = row.label.toLowerCase().includes('total') || ['Gross margin', 'EBITDA'].includes(row.label);
     const val = sumAcrossMonths(row, months);
@@ -673,7 +695,7 @@ function renderTable() {
   head.innerHTML = '<th>Line Item</th>' + RAW.months.map(m => `<th>${m}</th>`).join('');
   const body = document.getElementById('tableBody');
   body.innerHTML = '';
-  RAW.rows.forEach(row => {
+  getDisplayRows().forEach(row => {
     const isTotal = row.label.toLowerCase().includes('total') || ['Gross margin', 'EBITDA'].includes(row.label);
     const isPctRow = row.label.trim().startsWith('%');
     const tr = document.createElement('tr');
