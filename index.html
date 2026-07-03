@@ -333,7 +333,10 @@ function processGroups() {
   RAW.rows.forEach(row => {
     const marker = GROUP_MARKERS.find(m => m.label === row.label);
     if (marker) {
-      const channelRows = buffer.filter(r => CHANNELS.includes(r.label));
+      const channelRowsRaw = buffer.filter(r => CHANNELS.includes(r.label));
+      const dedupMap = new Map();
+      channelRowsRaw.forEach(r => dedupMap.set(r.label, r));
+      const channelRows = CHANNELS.map(c => dedupMap.get(c)).filter(Boolean);
       CHANNEL_GROUPS[marker.metric] = channelRows;
       buffer = [];
     } else {
