@@ -413,11 +413,39 @@ function splitByMagnitude(labels, data) {
   });
   return { mainLabels, mainData, minorLabels, minorData };
 }
+const dataLabelPlugin = {
+  id: 'dataLabelPlugin',
+  afterDatasetsDraw(chart, args, opts) {
+    const { ctx } = chart;
+    chart.data.datasets.forEach((dataset, i) => {
+      const meta = chart.getDatasetMeta(i);
+      meta.data.forEach((bar, index) => {
+        const value = dataset.data[index];
+        if (value === null || value === undefined) return;
+        const label = opts.formatter ? opts.formatter(value) : value;
+        ctx.save();
+        ctx.fillStyle = '#F2F4F7';
+        ctx.font = '600 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        const yPos = value >= 0 ? bar.y - 8 : bar.y + 16;
+        ctx.fillText(label, bar.x, yPos);
+        ctx.restore();
+      });
+    });
+  }
+};
+Chart.register(dataLabelPlugin);
+
 function barOptions(tooltipFmt, axisFmt) {
   axisFmt = axisFmt || tooltipFmt;
   return {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => tooltipFmt(c.raw) } } },
+    layout: { padding: { top: 20 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (c) => tooltipFmt(c.raw) } },
+      dataLabelPlugin: { formatter: tooltipFmt }
+    },
     scales: {
       x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 11 } } },
       y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', callback: (v) => axisFmt(v) } }
@@ -511,7 +539,8 @@ function renderTrendChart() {
     data: { labels: months, datasets: [{ data, borderColor: '#3ABCA2', backgroundColor: 'rgba(58,188,162,0.14)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#3ABCA2', borderWidth: 2 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtFull(c.raw) } } },
+      layout: { padding: { top: 20 } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtFull(c.raw) } }, dataLabelPlugin: { formatter: fmtCurrency } },
       scales: {
         x: { grid: { display: false }, ticks: { color: '#9AA4B2' } },
         y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', callback: (v) => fmtCurrency(v) } }
@@ -519,8 +548,6 @@ function renderTrendChart() {
     }
   });
 }
-
-/* ---------- Ratios ---------- */
 let ratioChartInstance = null;
 let ratioView = 'channel';
 function renderRatioControls() {
@@ -583,7 +610,8 @@ function renderRatioChart() {
       data: { labels, datasets: [{ data, backgroundColor: '#3ABCA2', borderRadius: 6, maxBarThickness: 56 }] },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtPct(c.raw) } } },
+        layout: { padding: { top: 20 } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtPct(c.raw) } }, dataLabelPlugin: { formatter: fmtPct } },
         scales: {
           x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 11 } } },
           y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', callback: (v) => v + '%' } }
@@ -609,7 +637,8 @@ function renderRatioTrendChart(def, ctx) {
     data: { labels: months, datasets: [{ data, borderColor: '#FBAE25', backgroundColor: 'rgba(251,174,37,0.14)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#FBAE25', borderWidth: 2 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtPct(c.raw) } } },
+      layout: { padding: { top: 20 } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtPct(c.raw) } }, dataLabelPlugin: { formatter: fmtPct } },
       scales: {
         x: { grid: { display: false }, ticks: { color: '#9AA4B2' } },
         y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', callback: (v) => v + '%' } }
