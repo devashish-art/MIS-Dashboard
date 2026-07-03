@@ -482,29 +482,15 @@ function renderCompareChart() {
   const rows = CHANNEL_GROUPS[metric] || [];
   const labels = rows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
   const data = rows.map(r => r.values[month]);
-  const split = splitByMagnitude(labels, data);
 
   const ctx = document.getElementById('compareChart');
   if (compareChartInstance) compareChartInstance.destroy();
   compareChartInstance = new Chart(ctx, {
     type: 'bar',
-    data: { labels: split.mainLabels, datasets: [{ data: split.mainData, backgroundColor: split.mainData.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
+    data: { labels, datasets: [{ data, backgroundColor: data.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
     options: barOptions(fmtFull, fmtCurrency)
   });
-
-  const minorWrap = document.getElementById('compareChartMinorWrap');
-  if (compareChartMinorInstance) { compareChartMinorInstance.destroy(); compareChartMinorInstance = null; }
-  if (split.minorLabels.length > 0) {
-    minorWrap.style.display = 'block';
-    const minorCtx = document.getElementById('compareChartMinor');
-    compareChartMinorInstance = new Chart(minorCtx, {
-      type: 'bar',
-      data: { labels: split.minorLabels, datasets: [{ data: split.minorData, backgroundColor: split.minorData.map(v => v < 0 ? '#E35C25' : '#FBAE25'), borderRadius: 6, maxBarThickness: 48 }] },
-      options: barOptions(fmtFull, fmtCurrency)
-    });
-  } else {
-    minorWrap.style.display = 'none';
-  }
+  document.getElementById('compareChartMinorWrap').style.display = 'none';
 }
 
 /* ---------- Trend ---------- */
@@ -688,29 +674,15 @@ function renderCumulative() {
   const rows = CHANNEL_GROUPS[metric] || [];
   const labels = rows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
   const data = rows.map(r => sumAcrossMonths(r, months));
-  const split = splitByMagnitude(labels, data);
 
   const ctx = document.getElementById('cumChart');
   if (cumChartInstance) cumChartInstance.destroy();
   cumChartInstance = new Chart(ctx, {
     type: 'bar',
-    data: { labels: split.mainLabels, datasets: [{ data: split.mainData, backgroundColor: split.mainData.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
+    data: { labels, datasets: [{ data, backgroundColor: data.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
     options: barOptions(fmtFull, fmtCurrency)
   });
-
-  const minorWrap = document.getElementById('cumChartMinorWrap');
-  if (cumChartMinorInstance) { cumChartMinorInstance.destroy(); cumChartMinorInstance = null; }
-  if (split.minorLabels.length > 0) {
-    minorWrap.style.display = 'block';
-    const minorCtx = document.getElementById('cumChartMinor');
-    cumChartMinorInstance = new Chart(minorCtx, {
-      type: 'bar',
-      data: { labels: split.minorLabels, datasets: [{ data: split.minorData, backgroundColor: split.minorData.map(v => v < 0 ? '#E35C25' : '#FBAE25'), borderRadius: 6, maxBarThickness: 48 }] },
-      options: barOptions(fmtFull, fmtCurrency)
-    });
-  } else {
-    minorWrap.style.display = 'none';
-  }
+  document.getElementById('cumChartMinorWrap').style.display = 'none';
 
   const head = document.getElementById('cumTableHead');
   head.innerHTML = '<th>Line Item</th><th>Cumulative (' + months.length + ' mo)</th>';
