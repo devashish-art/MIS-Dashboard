@@ -294,6 +294,13 @@ const RATIO_DEFINITIONS = [
 
 const COLORS = ['#3ABCA2', '#FBAE25', '#E35C25', '#4C94D0', '#6566AE'];
 
+const MARKETING_CHANNEL_MAP = {
+  'Snackible-Own website': ['Snackible-Online [Facebook]', 'Snackible-Online [Google]', 'Snackible-Online [Discounts]', 'Jio Haptic / Goexcelsior / BOB'],
+  'Online Alternate Channels': ['Online Alternate Channels', 'Other Marketing Expenses'],
+  'B2B/Institutional sales channel': ['B2B/Institutional Sales'],
+  'General Trade': ['General Trade']
+};
+
 let RAW = null;
 let CHANNEL_GROUPS = {};
 let TOTALS_BY_LABEL = {};
@@ -325,6 +332,7 @@ async function loadData() {
   RAW = json;
   selectedMonths = [...RAW.months];
   processGroups();
+  buildMarketingChannelGroup();
   render();
 }
 
@@ -344,6 +352,26 @@ function processGroups() {
     }
     TOTALS_BY_LABEL[row.label] = row;
   });
+}
+
+function buildMarketingChannelGroup() {
+  const rows = CHANNELS.map(channel => {
+    const sourceLabels = MARKETING_CHANNEL_MAP[channel];
+    const values = {};
+    RAW.months.forEach(month => {
+      if (!sourceLabels) { values[month] = null; return; }
+      let sum = null;
+      sourceLabels.forEach(lbl => {
+        const r = TOTALS_BY_LABEL[lbl];
+        if (r && r.values[month] !== null && r.values[month] !== undefined) {
+          sum = (sum || 0) + r.values[month];
+        }
+      });
+      values[month] = sum;
+    });
+    return { label: channel, section: 'Marketing Expenses', values };
+  });
+  CHANNEL_GROUPS['Marketing Expenses'] = rows;
 }
 
 function latestMonth() { return RAW.months[RAW.months.length - 1]; }
