@@ -183,6 +183,10 @@
         </div>
       </div>
       <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
+      <div id="compareChartMinorWrap" style="display:none; margin-top:16px;">
+        <div class="note" style="margin-top:0; margin-bottom:8px;">Smaller channels, zoomed in</div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="compareChartMinor"></canvas></div>
+      </div>
     </div>
   </div>
 
@@ -225,6 +229,10 @@
         <select id="cumMetric"></select>
       </div>
       <div class="chart-wrap"><canvas id="cumChart"></canvas></div>
+      <div id="cumChartMinorWrap" style="display:none; margin-top:16px;">
+        <div class="note" style="margin-top:0; margin-bottom:8px;">Smaller channels, zoomed in</div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="cumChartMinor"></canvas></div>
+      </div>
     </div>
     <div class="card">
       <div class="card-header"><div class="card-title">Cumulative Statement</div></div>
@@ -392,8 +400,34 @@ function renderKPIs() {
   document.getElementById('latestMonthBadge').textContent = months.length === RAW.months.length ? 'All months' : months.length + ' month' + (months.length === 1 ? '' : 's') + ' selected';
 }
 
+function splitByMagnitude(labels, data) {
+  const absVals = data.map(v => v === null || v === undefined ? 0 : Math.abs(v));
+  const maxAbs = Math.max(...absVals, 0);
+  if (maxAbs === 0) return { mainLabels: labels, mainData: data, minorLabels: [], minorData: [] };
+  const threshold = maxAbs * 0.15;
+  const mainLabels = [], mainData = [], minorLabels = [], minorData = [];
+  labels.forEach((l, i) => {
+    const v = data[i];
+    if (v !== null && v !== undefined && Math.abs(v) < threshold) { minorLabels.push(l); minorData.push(v); }
+    else { mainLabels.push(l); mainData.push(v); }
+  });
+  return { mainLabels, mainData, minorLabels, minorData };
+}
+function barOptions(tooltipFmt, axisFmt) {
+  axisFmt = axisFmt || tooltipFmt;
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => tooltipFmt(c.raw) } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', callback: (v) => axisFmt(v) } }
+    }
+  };
+}
+
 /* ---------- Channel Comparison ---------- */
 let compareChartInstance = null;
+let compareChartMinorInstance = null;
 function renderCompareControls() {
   const metricSel = document.getElementById('compareMetric');
   metricSel.innerHTML = '';
@@ -420,20 +454,29 @@ function renderCompareChart() {
   const rows = CHANNEL_GROUPS[metric] || [];
   const labels = rows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
   const data = rows.map(r => r.values[month]);
+  const split = splitByMagnitude(labels, data);
+
   const ctx = document.getElementById('compareChart');
   if (compareChartInstance) compareChartInstance.destroy();
   compareChartInstance = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data, backgroundColor: data.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtFull(c.raw) } } },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 11 } } },
-        y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', callback: (v) => fmtCurrency(v) } }
-      }
-    }
+    data: { labels: split.mainLabels, datasets: [{ data: split.mainData, backgroundColor: split.mainData.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
+    options: barOptions(fmtFull, fmtCurrency)
   });
+
+  const minorWrap = document.getElementById('compareChartMinorWrap');
+  if (compareChartMinorInstance) { compareChartMinorInstance.destroy(); compareChartMinorInstance = null; }
+  if (split.minorLabels.length > 0) {
+    minorWrap.style.display = 'block';
+    const minorCtx = document.getElementById('compareChartMinor');
+    compareChartMinorInstance = new Chart(minorCtx, {
+      type: 'bar',
+      data: { labels: split.minorLabels, datasets: [{ data: split.minorData, backgroundColor: split.minorData.map(v => v < 0 ? '#E35C25' : '#FBAE25'), borderRadius: 6, maxBarThickness: 48 }] },
+      options: barOptions(fmtFull, fmtCurrency)
+    });
+  } else {
+    minorWrap.style.display = 'none';
+  }
 }
 
 /* ---------- Trend ---------- */
@@ -577,6 +620,7 @@ function renderRatioTrendChart(def, ctx) {
 
 /* ---------- Cumulative ---------- */
 let cumChartInstance = null;
+let cumChartMinorInstance = null;
 function sumAcrossMonths(row, months) {
   let hasValue = false;
   let sum = 0;
@@ -615,20 +659,29 @@ function renderCumulative() {
   const rows = CHANNEL_GROUPS[metric] || [];
   const labels = rows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
   const data = rows.map(r => sumAcrossMonths(r, months));
+  const split = splitByMagnitude(labels, data);
+
   const ctx = document.getElementById('cumChart');
   if (cumChartInstance) cumChartInstance.destroy();
   cumChartInstance = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data, backgroundColor: data.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtFull(c.raw) } } },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 11 } } },
-        y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', callback: (v) => fmtCurrency(v) } }
-      }
-    }
+    data: { labels: split.mainLabels, datasets: [{ data: split.mainData, backgroundColor: split.mainData.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
+    options: barOptions(fmtFull, fmtCurrency)
   });
+
+  const minorWrap = document.getElementById('cumChartMinorWrap');
+  if (cumChartMinorInstance) { cumChartMinorInstance.destroy(); cumChartMinorInstance = null; }
+  if (split.minorLabels.length > 0) {
+    minorWrap.style.display = 'block';
+    const minorCtx = document.getElementById('cumChartMinor');
+    cumChartMinorInstance = new Chart(minorCtx, {
+      type: 'bar',
+      data: { labels: split.minorLabels, datasets: [{ data: split.minorData, backgroundColor: split.minorData.map(v => v < 0 ? '#E35C25' : '#FBAE25'), borderRadius: 6, maxBarThickness: 48 }] },
+      options: barOptions(fmtFull, fmtCurrency)
+    });
+  } else {
+    minorWrap.style.display = 'none';
+  }
 
   const head = document.getElementById('cumTableHead');
   head.innerHTML = '<th>Line Item</th><th>Cumulative (' + months.length + ' mo)</th>';
