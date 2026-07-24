@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Snackible MIS</title>
+<script src="chart.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #0B0F14;
+    --bg-1: #111722;
+    --bg-2: #171E2B;
+    --bg-3: #1E2735;
+    --border: rgba(255,255,255,0.08);
+    --text-primary: #F2F4F7;
+    --text-secondary: #9AA4B2;
+    --text-tertiary: #667085;
+    --accent: #3ABCA2;
+    --accent-soft: rgba(58,188,162,0.14);
+    --green: #3ABCA2;
+    --red: #E35C25;
+    --amber: #FBAE25;
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-0);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .mono { font-family: 'Geist Mono', monospace; }
+
+  .shell {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 32px 24px 96px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand h1 { font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand span { font-size: 13px; color: var(--text-tertiary); }
+
+  .month-badge {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 32px; }
+  .kpi-card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .kpi-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; font-weight: 500; }
+  .kpi-value { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .kpi-delta { font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+  .kpi-delta.up { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+  .kpi-context { font-size: 11px; color: var(--text-tertiary); margin-left: 4px; }
+
+  .tabs { display: flex; gap: 4px; background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 4px; width: fit-content; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; transition: all 150ms ease; white-space: nowrap; }
+  .tab-btn.active { background: var(--bg-3); color: var(--text-primary); }
+  .tab-btn:hover:not(.active) { color: var(--text-primary); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 20px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .card-title { font-size: 15px; font-weight: 600; }
+
+  select {
+    background: var(--bg-2); color: var(--text-primary); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; font-family: inherit; cursor: pointer;
+  }
+
+  .chart-wrap { position: relative; height: 340px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: right; color: var(--text-tertiary); font-weight: 500; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.03em; padding: 8px 12px; border-bottom: 1px solid var(--border);
+  }
+  thead th:first-child { text-align: left; }
+  tbody td { padding: 9px 12px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  tbody td:first-child { text-align: left; color: var(--text-primary); }
+  tr.group-total td { font-weight: 700; color: var(--text-primary); border-top: 1px solid var(--border); }
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--text-tertiary); }
+
+  /* Month selector bar */
+  .month-selector { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 20px; }
+  .month-selector-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .month-selector-header .label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .quick-actions { display: flex; gap: 6px; }
+  .quick-actions button, .range-picker button {
+    background: var(--bg-2); border: 1px solid var(--border); color: var(--text-secondary);
+    font-size: 12px; padding: 6px 10px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;
+  }
+  .quick-actions button:hover, .range-picker button:hover { color: var(--text-primary); }
+  .range-picker { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .range-picker select { padding: 6px 8px; font-size: 12px; }
+  .month-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .month-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg-2); color: var(--text-secondary);
+    font-size: 12px; font-weight: 600; cursor: pointer; user-select: none; transition: all 150ms ease;
+  }
+  .month-chip.checked { background: var(--accent-soft); border-color: var(--accent); color: var(--text-primary); }
+  .month-chip input { display: none; }
+
+  .toggle-group { display: flex; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px; }
+  .toggle-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  .toggle-btn.active { background: var(--bg-3); color: var(--text-primary); }
+
+  .ratio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 700px) { .ratio-grid { grid-template-columns: 1fr; } }
+
+  .note { font-size: 12px; color: var(--text-tertiary); margin-top: 12px; }
+
+  .refresh-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-2); border: 1px solid var(--border);
+    color: var(--text-secondary); font-size: 13px; font-weight: 600;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    transition: all 150ms ease;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <h1>Snackible MIS</h1>
+      <span>Income statement</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="month-badge mono" id="latestMonthBadge">Loading…</div>
+      <button class="refresh-btn" id="refreshBtn" onclick="handleRefresh()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 4s1.5-3 7-3a7 7 0 0 1 7 7"/>
+          <path d="M15 12s-1.5 3-7 3a7 7 0 0 1-7-7"/>
+          <polyline points="1 1 1 4 4 4"/>
+          <polyline points="15 15 15 12 12 12"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <div id="kpiGrid" class="kpi-grid"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="compare">Channel Comparison</button>
+    <button class="tab-btn" data-tab="trend">Trend</button>
+    <button class="tab-btn" data-tab="ratios">Ratios</button>
+    <button class="tab-btn" data-tab="cumulative">Cumulative</button>
+    <button class="tab-btn" data-tab="table">Full Statement</button>
+  </div>
+
+  <div class="month-selector" id="monthSelectorBar">
+    <div class="month-selector-header">
+      <span class="label">Select months</span>
+      <div class="range-picker">
+        From <select id="rangeFrom"></select>
+        To <select id="rangeTo"></select>
+        <button id="applyRange">Apply range</button>
+      </div>
+      <div class="quick-actions">
+        <button id="selectAllMonths">All</button>
+        <button id="clearMonths">None</button>
+      </div>
+    </div>
+    <div class="month-checks" id="monthChecks"></div>
+  </div>
+
+  <div class="panel active" id="panel-compare">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Channel Comparison</div>
+        <div style="display:flex; gap:8px;">
+          <select id="compareMetric"></select>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
+      <div id="compareChartMinorWrap" style="display:none; margin-top:16px;">
+        <div class="note" style="margin-top:0; margin-bottom:8px;">Smaller channels, zoomed in</div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="compareChartMinor"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-trend">
+    <div id="trendChartsContainer"></div>
+  </div>
+
+  <div class="panel" id="panel-ratios">
+    <div class="note" id="ratioMonthNote" style="margin-bottom:12px;"></div>
+    <div class="ratio-grid" id="ratioGrid"></div>
+  </div>
+
+  <div class="panel" id="panel-cumulative">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Cumulative KPIs (selected months)</div></div>
+      <div class="kpi-grid" id="cumKpiGrid"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Cumulative Channel Breakdown</div>
+        <select id="cumMetric"></select>
+      </div>
+      <div class="chart-wrap"><canvas id="cumChart"></canvas></div>
+      <div id="cumChartMinorWrap" style="display:none; margin-top:16px;">
+        <div class="note" style="margin-top:0; margin-bottom:8px;">Smaller channels, zoomed in</div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="cumChartMinor"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Cumulative Statement</div></div>
+      <div style="overflow-x:auto;">
+        <table id="cumTable">
+          <thead><tr id="cumTableHead"></tr></thead>
+          <tbody id="cumTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-table">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Full Income Statement</div></div>
+      <div style="overflow-x:auto;">
+        <table id="fullTable">
+          <thead><tr id="tableHead"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = '/api/sheet';
+
+const CHANNELS = [
+  'Snackible-Own website',
+  'Online Alternate Channels',
+  'B2B/Institutional sales channel',
+  'General Trade',
+  'Modern Trade'
+];
+
+const GROUP_MARKERS = [
+  { label: 'Total Revenue', metric: 'Revenue' },
+  { label: 'Total cost of goods', metric: 'Cost of Goods Sold' },
+  { label: 'Gross margin', metric: 'Gross Margin' },
+  { label: 'Total Labour Expense', metric: 'Labour Charges' },
+  { label: 'Total Delivery Expense', metric: 'Delivery Expense' },
+  { label: 'Total CM1', metric: 'CM1' },
+  { label: 'Total Marketing Expenses', metric: 'Marketing Expenses' },
+  { label: 'Total CM2', metric: 'CM2' },
+  { label: 'Total Indirect Expenses', metric: 'Other Indirect Expenses' }
+];
+
+const KPI_ROWS = [
+  { key: 'Total Net Revenue', label: 'Net Revenue' },
+  { key: 'Gross margin', label: 'Gross Margin' },
+  { key: 'Total CM1', label: 'CM1' },
+  { key: 'Total CM2', label: 'CM2' },
+  { key: 'EBITDA', label: 'EBITDA' }
+];
+
+const RATIO_DEFINITIONS = [
+  { key: 'cogs_pct', label: 'COGS % of Revenue', totalLabel: 'Total cost of goods', channelMetric: 'Cost of Goods Sold' },
+  { key: 'gross_margin_pct', label: 'Gross Margin %', totalLabel: 'Gross margin', channelMetric: 'Gross Margin' },
+  { key: 'labour_pct', label: 'Labour % of Revenue', totalLabel: 'Total Labour Expense', channelMetric: 'Labour Charges' },
+  { key: 'delivery_pct', label: 'Delivery % of Revenue', totalLabel: 'Total Delivery Expense', channelMetric: 'Delivery Expense' },
+  { key: 'cm1_pct', label: 'CM1 %', totalLabel: 'Total CM1', channelMetric: 'CM1' },
+  { key: 'marketing_pct', label: 'Marketing % of Revenue', totalLabel: 'Total Marketing Expenses', channelMetric: 'Marketing Expenses' },
+  { key: 'cm2_pct', label: 'CM2 %', totalLabel: 'Total CM2', channelMetric: 'CM2' },
+  { key: 'opex_pct', label: 'Other Indirect Expenses % of Revenue', totalLabel: 'Total Indirect Expenses', channelMetric: null }
+];
+
+const COLORS = ['#3ABCA2', '#FBAE25', '#E35C25', '#4C94D0', '#6566AE'];
+
+const MARKETING_CHANNEL_MAP = {
+  'Snackible-Own website': ['Snackible-Online [Facebook]', 'Snackible-Online [Google]', 'Snackible-Online [Discounts]', 'Jio Haptic / Goexcelsior / BOB'],
+  'Online Alternate Channels': ['Online Alternate Channels', 'Other Marketing Expenses'],
+  'B2B/Institutional sales channel': ['B2B/Institutional Sales'],
+  'General Trade': ['General Trade']
+};
+
+let RAW = null;
+let CHANNEL_GROUPS = {};
+let TOTALS_BY_LABEL = {};
+let selectedMonths = [];
+
+function fmtCurrency(n) {
+  if (n === null || n === undefined) return '—';
+  const abs = Math.abs(n);
+  let str;
+  if (abs >= 10000000) str = (n / 10000000).toFixed(2) + 'Cr';
+  else if (abs >= 100000) str = (n / 100000).toFixed(2) + 'L';
+  else if (abs >= 1000) str = (n / 1000).toFixed(1) + 'K';
+  else str = n.toFixed(0);
+  return '₹' + str;
+}
+function fmtFull(n) {
+  if (n === null || n === undefined) return '—';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+function fmtPct(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return n.toFixed(1) + '%';
+}
+
+async function loadData() {
+  const res = await fetch(API_URL);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  RAW = json;
+  selectedMonths = [...RAW.months];
+  processGroups();
+  buildMarketingChannelGroup();
+  render();
+}
+
+async function handleRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  btn.disabled = true;
+  try {
+    const res = await fetch(API_URL + '?t=' + Date.now()); // cache-bust
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    RAW = json;
+    selectedMonths = [...RAW.months];
+    processGroups();
+    buildMarketingChannelGroup();
+    render();
+  } catch (err) {
+    alert('Refresh failed: ' + err.message);
+  } finally {
+    btn.classList.remove('spinning');
+    btn.disabled = false;
+  }
+}
+
+function processGroups() {
+  let buffer = [];
+  RAW.rows.forEach(row => {
+    const marker = GROUP_MARKERS.find(m => m.label === row.label);
+    if (marker) {
+      const channelRowsRaw = buffer.filter(r => CHANNELS.includes(r.label));
+      const dedupMap = new Map();
+      channelRowsRaw.forEach(r => dedupMap.set(r.label, r));
+      const channelRows = CHANNELS.map(c => dedupMap.get(c)).filter(Boolean);
+      CHANNEL_GROUPS[marker.metric] = channelRows;
+      buffer = [];
+    } else {
+      buffer.push(row);
+    }
+    TOTALS_BY_LABEL[row.label] = row;
+  });
+}
+
+function buildMarketingChannelGroup() {
+  const rows = CHANNELS.map(channel => {
+    const sourceLabels = MARKETING_CHANNEL_MAP[channel];
+    const values = {};
+    RAW.months.forEach(month => {
+      if (!sourceLabels) { values[month] = null; return; }
+      let sum = null;
+      sourceLabels.forEach(lbl => {
+        const r = TOTALS_BY_LABEL[lbl];
+        if (r && r.values[month] !== null && r.values[month] !== undefined) {
+          sum = (sum || 0) + r.values[month];
+        }
+      });
+      values[month] = sum;
+    });
+    return { label: channel, section: 'Marketing Expenses', values };
+  });
+  CHANNEL_GROUPS['Marketing Expenses'] = rows;
+}
+
+function latestMonth() { return RAW.months[RAW.months.length - 1]; }
+function prevMonth() { return RAW.months.length > 1 ? RAW.months[RAW.months.length - 2] : null; }
+
+function renderKPIs() {
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = '';
+  const months = selectedMonths.length ? selectedMonths : RAW.months;
+  const lm = latestMonth();
+  const pm = prevMonth();
+  KPI_ROWS.forEach(kpi => {
+    const row = TOTALS_BY_LABEL[kpi.key];
+    const val = row ? sumAcrossMonths(row, months) : null;
+    let deltaHtml = '';
+    if (row && pm) {
+      const lmVal = row.values[lm];
+      const pmVal = row.values[pm];
+      if (lmVal !== null && pmVal !== null && pmVal !== 0) {
+        const pct = ((lmVal - pmVal) / Math.abs(pmVal)) * 100;
+        const up = pct >= 0;
+        deltaHtml = `<span class="kpi-delta ${up ? 'up' : 'down'}">${up ? '↑' : '↓'} ${Math.abs(pct).toFixed(1)}%</span><span class="kpi-context">MoM, ${pm} → ${lm}</span>`;
+      }
+    }
+    const card = document.createElement('div');
+    card.className = 'kpi-card';
+    card.innerHTML = `<div class="kpi-label">${kpi.label}</div><div class="kpi-value">${fmtCurrency(val)}</div>${deltaHtml}`;
+    grid.appendChild(card);
+  });
+  document.getElementById('latestMonthBadge').textContent = months.length === RAW.months.length ? 'All months' : months.length + ' month' + (months.length === 1 ? '' : 's') + ' selected';
+}
+
+function splitByMagnitude(labels, data) {
+  const absVals = data.map(v => v === null || v === undefined ? 0 : Math.abs(v));
+  const maxAbs = Math.max(...absVals, 0);
+  if (maxAbs === 0) return { mainLabels: labels, mainData: data, minorLabels: [], minorData: [] };
+  const threshold = maxAbs * 0.15;
+  const mainLabels = [], mainData = [], minorLabels = [], minorData = [];
+  labels.forEach((l, i) => {
+    const v = data[i];
+    if (v !== null && v !== undefined && Math.abs(v) < threshold) { minorLabels.push(l); minorData.push(v); }
+    else { mainLabels.push(l); mainData.push(v); }
+  });
+  return { mainLabels, mainData, minorLabels, minorData };
+}
+// Plugin for TREND charts only: value label + MoM % change
+const trendLabelPlugin = {
+  id: 'trendLabelPlugin',
+  afterDatasetsDraw(chart) {
+    if (!chart._isTrendChart) return;
+    const { ctx, data } = chart;
+    const dataset = data.datasets[0];
+    const meta = chart.getDatasetMeta(0);
+    const ghostOffset = chart._ghostOffset || 0;
+
+    meta.data.forEach((point, i) => {
+      // Skip the invisible ghost point entirely
+      if (ghostOffset > 0 && i < ghostOffset) return;
+
+      const val = dataset.data[i];
+      if (val === null || val === undefined) return;
+      const primaryLabel = chart._isNetRev ? fmtCurrency(val) : val.toFixed(1) + '%';
+
+      // MoM: compare to previous index (which may be the ghost)
+      let momLabel = '';
+      let momColor = '#9AA4B2';
+      if (i > 0) {
+        const prev = dataset.data[i - 1];
+        if (prev !== null && prev !== undefined && prev !== 0) {
+          const chg = ((val - prev) / Math.abs(prev)) * 100;
+          momLabel = (chg >= 0 ? '+' : '') + chg.toFixed(1) + '% MoM';
+          momColor = chg >= 0 ? '#3ABCA2' : '#E35C25';
+        }
+      }
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#F2F4F7';
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.fillText(primaryLabel, point.x, point.y - 12);
+      if (momLabel) {
+        ctx.fillStyle = momColor;
+        ctx.font = '500 10px Inter, sans-serif';
+        ctx.fillText(momLabel, point.x, point.y + 20);
+      }
+      ctx.restore();
+    });
+  }
+};
+
+const dataLabelPlugin = {
+  id: 'dataLabelPlugin',
+  afterDatasetsDraw(chart, args, opts) {
+    if (chart._isTrendChart) return; // trend charts use trendLabelPlugin instead
+    const { ctx } = chart;
+    chart.data.datasets.forEach((dataset, i) => {
+      const meta = chart.getDatasetMeta(i);
+      meta.data.forEach((bar, index) => {
+        const value = dataset.data[index];
+        if (value === null || value === undefined) return;
+        const label = opts.formatter ? opts.formatter(value) : value;
+        ctx.save();
+        ctx.fillStyle = '#F2F4F7';
+        ctx.font = '600 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        const yPos = value >= 0 ? bar.y - 8 : bar.y + 16;
+        ctx.fillText(label, bar.x, yPos);
+        ctx.restore();
+      });
+    });
+  }
+};
+Chart.register(trendLabelPlugin);
+Chart.register(dataLabelPlugin);
+
+function barOptions(tooltipFmt, axisFmt) {
+  axisFmt = axisFmt || tooltipFmt;
+  return {
+    responsive: true, maintainAspectRatio: false,
+    layout: { padding: { top: 20 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (c) => tooltipFmt(c.raw) } },
+      dataLabelPlugin: { formatter: tooltipFmt }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', callback: (v) => axisFmt(v) } }
+    }
+  };
+}
+
+/* ---------- Channel Comparison ---------- */
+let compareChartInstance = null;
+let compareChartMinorInstance = null;
+function renderCompareControls() {
+  const metricSel = document.getElementById('compareMetric');
+  metricSel.innerHTML = '';
+  Object.keys(CHANNEL_GROUPS).forEach(metric => {
+    if (CHANNEL_GROUPS[metric].length === 0) return;
+    const opt = document.createElement('option');
+    opt.value = metric; opt.textContent = metric;
+    metricSel.appendChild(opt);
+  });
+  metricSel.onchange = renderCompareChart;
+}
+function renderCompareChart() {
+  const metric = document.getElementById('compareMetric').value;
+  const months = selectedMonths.length ? selectedMonths : RAW.months;
+  const rows = CHANNEL_GROUPS[metric] || [];
+  const labels = rows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
+  const data = rows.map(r => sumAcrossMonths(r, months));
+
+  const ctx = document.getElementById('compareChart');
+  if (compareChartInstance) compareChartInstance.destroy();
+  compareChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: data.map(v => v !== null && v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
+    options: barOptions(fmtFull, fmtCurrency)
+  });
+  document.getElementById('compareChartMinorWrap').style.display = 'none';
+}
+
+/* ---------- Trend ---------- */
+// Mar-26 ghost baseline — feeds MoM% for Apr-26, never shown as a visible point
+const MAR26 = 'Mar-26';
+const MAR26_BASELINE = {
+  'Total Net Revenue':      23547670,
+  'Total cost of goods':    11630935,
+  'Gross margin':           11916735,
+  'Total Labour Expense':    444348,
+  'Total Delivery Expense':  2416546,
+  'Total CM1':               8987776,
+  'Total Marketing Expenses':7847712,
+  'Total CM2':               1140063,
+  'Total Indirect Expenses': 2228734,
+  'EBITDA':                 -1088670,
+  'PBT and Depreciation':   -1188670
+};
+
+const TREND_METRICS = [
+  { label: 'Net Revenue',             rowKey: 'Total Net Revenue',      isNetRev: true },
+  { label: 'Cost of Goods Sold',      rowKey: 'Total cost of goods' },
+  { label: 'Gross Margin',            rowKey: 'Gross margin' },
+  { label: 'Labour Charges',          rowKey: 'Total Labour Expense' },
+  { label: 'Delivery Expense',        rowKey: 'Total Delivery Expense' },
+  { label: 'CM1',                     rowKey: 'Total CM1' },
+  { label: 'Marketing Expenses',      rowKey: 'Total Marketing Expenses' },
+  { label: 'CM2',                     rowKey: 'Total CM2' },
+  { label: 'Other Indirect Expenses', rowKey: 'Total Indirect Expenses' },
+  { label: 'EBITDA',                  rowKey: 'EBITDA' },
+  { label: 'PBT & Depreciation',      rowKey: 'PBT and Depreciation' }
+];
+const trendChartInstances = {};
+function renderTrendControls() { /* no-op */ }
+function renderTrendChart() {
+  const months = selectedMonths.length ? selectedMonths : RAW.months;
+  const netRevRow = TOTALS_BY_LABEL['Total Net Revenue'];
+  const container = document.getElementById('trendChartsContainer');
+  container.innerHTML = '';
+  Object.keys(trendChartInstances).forEach(k => {
+    if (trendChartInstances[k]) trendChartInstances[k].destroy();
+    delete trendChartInstances[k];
+  });
+
+  // Check if Apr-26 is in the visible months — if so, prepend Mar-26 ghost
+  const firstVisibleIsApr = months[0] === 'Apr-26';
+
+  TREND_METRICS.forEach((metric, idx) => {
+    const row = TOTALS_BY_LABEL[metric.rowKey];
+    if (!row) return;
+
+    const canvasId = 'trendChart_' + idx;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '16px';
+    const subtitle = metric.isNetRev ? '₹ absolute' : '% of Net Revenue';
+    card.innerHTML = `
+      <div class="card-header" style="margin-bottom:4px;">
+        <div class="card-title">${metric.label}
+          <span style="color:var(--text-tertiary);font-weight:400;font-size:12px;margin-left:6px;">${subtitle}</span>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px;"><canvas id="${canvasId}"></canvas></div>`;
+    container.appendChild(card);
+
+    // Build visible data
+    let visibleData, yTickCb, tooltipCb, lineColor, fillColor;
+    const mar26Raw = MAR26_BASELINE[metric.rowKey] ?? null;
+    const mar26NetRev = MAR26_BASELINE['Total Net Revenue'];
+
+    function toChartVal(rawVal, monthNetRev) {
+      if (metric.isNetRev) return rawVal ?? null;
+      if (rawVal === null || rawVal === undefined || !monthNetRev || monthNetRev === 0) return null;
+      return (rawVal / monthNetRev) * 100;
+    }
+
+    visibleData = months.map(m => {
+      const val = row.values[m] ?? null;
+      const netRev = netRevRow ? (netRevRow.values[m] ?? null) : null;
+      return toChartVal(val, netRev);
+    });
+
+    const nonNull = visibleData.filter(v => v !== null);
+    const allNeg = nonNull.length > 0 && nonNull.every(v => v <= 0);
+    lineColor = allNeg ? '#E35C25' : '#3ABCA2';
+    fillColor = allNeg ? 'rgba(227,92,37,0.12)' : 'rgba(58,188,162,0.12)';
+
+    if (metric.isNetRev) {
+      yTickCb = v => fmtCurrency(v);
+      tooltipCb = c => fmtFull(c.raw);
+    } else {
+      yTickCb = v => v.toFixed(1) + '%';
+      tooltipCb = c => fmtPct(c.raw);
+    }
+
+    // Prepend ghost Mar-26 point if Apr-26 is first visible month
+    let chartLabels, chartData, pointRadii;
+    if (firstVisibleIsApr && mar26Raw !== null) {
+      const ghostVal = toChartVal(mar26Raw, mar26NetRev);
+      chartLabels = [MAR26, ...months];
+      chartData   = [ghostVal, ...visibleData];
+      // Ghost point: invisible (radius 0), no label drawn
+      pointRadii  = [0, ...months.map(() => 5)];
+    } else {
+      chartLabels = [...months];
+      chartData   = [...visibleData];
+      pointRadii  = months.map(() => 5);
+    }
+
+    const instance = new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          data: chartData,
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          fill: true, tension: 0.3,
+          pointRadius: pointRadii,
+          pointBackgroundColor: lineColor,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 30, bottom: 28 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: tooltipCb,
+              // hide tooltip on ghost point
+              filter: (item) => item.dataIndex !== 0 || !firstVisibleIsApr
+            }
+          },
+          dataLabelPlugin: { disabled: true }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              color: '#9AA4B2', font: { size: 11 },
+              // hide the ghost Mar-26 tick label
+              callback: function(val, i) {
+                if (firstVisibleIsApr && i === 0) return '';
+                return this.getLabelForValue(val);
+              }
+            }
+          },
+          y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', font: { size: 10 }, callback: yTickCb } }
+        }
+      }
+    });
+    instance._isTrendChart = true;
+    instance._isNetRev = !!metric.isNetRev;
+    instance._ghostOffset = firstVisibleIsApr && mar26Raw !== null ? 1 : 0;
+    trendChartInstances[idx] = instance;
+  });
+}
+let ratioChartInstances = {};
+function renderRatiosGrid() {
+  const grid = document.getElementById('ratioGrid');
+  const months = selectedMonths;
+  const monthNote = document.getElementById('ratioMonthNote');
+  if (months.length === 0) {
+    monthNote.textContent = 'No months selected. Check at least one month to see ratios.';
+  } else if (months.length === 1) {
+    monthNote.textContent = 'Showing ' + months[0] + '.';
+  } else {
+    monthNote.textContent = 'Cumulative across ' + months.length + ' months: ' + months.join(', ') + '.';
+  }
+
+  if (grid.children.length === 0) {
+    RATIO_DEFINITIONS.forEach(def => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<div class="card-header"><div class="card-title">${def.label}</div></div><div class="chart-wrap" style="height:220px;"><canvas id="ratioChart_${def.key}"></canvas></div>`;
+      grid.appendChild(card);
+    });
+  }
+
+  RATIO_DEFINITIONS.forEach(def => {
+    const denomRows = CHANNEL_GROUPS['Revenue'] || [];
+    let labels, data;
+
+    if (def.channelMetric && CHANNEL_GROUPS[def.channelMetric] && CHANNEL_GROUPS[def.channelMetric].length > 0) {
+      const numRows = CHANNEL_GROUPS[def.channelMetric];
+      labels = numRows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
+      data = numRows.map(r => {
+        const denomRow = denomRows.find(d => d.label === r.label);
+        const num = months.length ? sumAcrossMonths(r, months) : null;
+        const denom = denomRow && months.length ? sumAcrossMonths(denomRow, months) : null;
+        if (num === null || denom === null || denom === 0) return null;
+        return (num / denom) * 100;
+      });
+    } else {
+      const numRow = TOTALS_BY_LABEL[def.totalLabel];
+      const denomRow = TOTALS_BY_LABEL['Total Revenue'];
+      const num = numRow && months.length ? sumAcrossMonths(numRow, months) : null;
+      const denom = denomRow && months.length ? sumAcrossMonths(denomRow, months) : null;
+      labels = ['Overall'];
+      data = [(num === null || denom === null || denom === 0) ? null : (num / denom) * 100];
+    }
+
+    const ctx = document.getElementById('ratioChart_' + def.key);
+    if (ratioChartInstances[def.key]) ratioChartInstances[def.key].destroy();
+    ratioChartInstances[def.key] = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ data, backgroundColor: data.map(v => v < 0 ? '#E35C25' : '#FBAE25'), borderRadius: 6, maxBarThickness: 48 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 20 } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtPct(c.raw) } }, dataLabelPlugin: { formatter: fmtPct } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', font: { size: 10 }, callback: (v) => v + '%' } }
+        }
+      }
+    });
+  });
+}
+
+/* ---------- Cumulative ---------- */
+let cumChartInstance = null;
+let cumChartMinorInstance = null;
+function sumAcrossMonths(row, months) {
+  let hasValue = false;
+  let sum = 0;
+  months.forEach(m => {
+    const v = row.values[m];
+    if (v !== null && v !== undefined) { sum += v; hasValue = true; }
+  });
+  return hasValue ? sum : null;
+}
+function renderCumulativeControls() {
+  const sel = document.getElementById('cumMetric');
+  sel.innerHTML = '';
+  Object.keys(CHANNEL_GROUPS).forEach(metric => {
+    if (CHANNEL_GROUPS[metric].length === 0) return;
+    const opt = document.createElement('option');
+    opt.value = metric; opt.textContent = metric;
+    sel.appendChild(opt);
+  });
+  sel.onchange = renderCumulative;
+}
+function getDisplayRows() {
+  const channelLabels = new Set(CHANNELS);
+  const result = [];
+  let buffer = [];
+  const flush = (endRow) => {
+    const lastIndexForChannel = {};
+    buffer.forEach((r, idx) => { if (channelLabels.has(r.label)) lastIndexForChannel[r.label] = idx; });
+    buffer.forEach((r, idx) => {
+      if (channelLabels.has(r.label) && lastIndexForChannel[r.label] !== idx) return;
+      result.push(r);
+    });
+    if (endRow) result.push(endRow);
+    buffer = [];
+  };
+  RAW.rows.forEach(row => {
+    const marker = GROUP_MARKERS.find(m => m.label === row.label);
+    if (marker) { flush(row); } else { buffer.push(row); }
+  });
+  flush(null);
+  return result;
+}
+
+function renderCumulative() {
+  const months = selectedMonths.length ? selectedMonths : RAW.months;
+
+  const grid = document.getElementById('cumKpiGrid');
+  grid.innerHTML = '';
+  KPI_ROWS.forEach(kpi => {
+    const row = TOTALS_BY_LABEL[kpi.key];
+    const val = row ? sumAcrossMonths(row, months) : null;
+    const card = document.createElement('div');
+    card.className = 'kpi-card';
+    card.innerHTML = `<div class="kpi-label">${kpi.label}</div><div class="kpi-value">${fmtCurrency(val)}</div>`;
+    grid.appendChild(card);
+  });
+
+  const metric = document.getElementById('cumMetric').value;
+  const rows = CHANNEL_GROUPS[metric] || [];
+  const labels = rows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
+  const data = rows.map(r => sumAcrossMonths(r, months));
+
+  const ctx = document.getElementById('cumChart');
+  if (cumChartInstance) cumChartInstance.destroy();
+  cumChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: data.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
+    options: barOptions(fmtFull, fmtCurrency)
+  });
+  document.getElementById('cumChartMinorWrap').style.display = 'none';
+
+  const head = document.getElementById('cumTableHead');
+  head.innerHTML = '<th>Line Item</th><th>Cumulative (' + months.length + ' mo)</th>';
+  const body = document.getElementById('cumTableBody');
+  body.innerHTML = '';
+  getDisplayRows().forEach(row => {
+    const isPctRow = row.label.trim().startsWith('%');
+    const isTotal = row.label.toLowerCase().includes('total') || ['Gross margin', 'EBITDA'].includes(row.label);
+    const val = sumAcrossMonths(row, months);
+    const tr = document.createElement('tr');
+    if (isTotal) tr.className = 'group-total';
+    let displayVal = '—';
+    if (val !== null) displayVal = isPctRow ? fmtPct(val / months.length) : fmtFull(val);
+    tr.innerHTML = `<td>${row.label}</td><td>${displayVal}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* ---------- Full Table ---------- */
+function renderTable() {
+  const head = document.getElementById('tableHead');
+  head.innerHTML = '<th>Line Item</th>' + RAW.months.map(m => `<th>${m}</th>`).join('');
+  const body = document.getElementById('tableBody');
+  body.innerHTML = '';
+  getDisplayRows().forEach(row => {
+    const isTotal = row.label.toLowerCase().includes('total') || ['Gross margin', 'EBITDA'].includes(row.label);
+    const isPctRow = row.label.trim().startsWith('%');
+    const tr = document.createElement('tr');
+    if (isTotal) tr.className = 'group-total';
+    const cells = [`<td>${row.label}</td>`].concat(
+      RAW.months.map(m => {
+        const v = row.values[m];
+        if (v === null) return '<td>—</td>';
+        return `<td>${isPctRow ? v.toFixed(1) + '%' : fmtFull(v)}</td>`;
+      })
+    );
+    tr.innerHTML = cells.join('');
+    body.appendChild(tr);
+  });
+}
+
+/* ---------- Month selector ---------- */
+function renderMonthSelector() {
+  const rangeFrom = document.getElementById('rangeFrom');
+  const rangeTo = document.getElementById('rangeTo');
+  rangeFrom.innerHTML = ''; rangeTo.innerHTML = '';
+  RAW.months.forEach(m => {
+    rangeFrom.appendChild(new Option(m, m));
+    rangeTo.appendChild(new Option(m, m));
+  });
+  rangeFrom.value = RAW.months[0];
+  rangeTo.value = RAW.months[RAW.months.length - 1];
+
+  const checksWrap = document.getElementById('monthChecks');
+  checksWrap.innerHTML = '';
+  RAW.months.forEach(m => {
+    const chip = document.createElement('label');
+    chip.className = 'month-chip checked';
+    chip.innerHTML = `<input type="checkbox" checked value="${m}"> ${m}`;
+    chip.querySelector('input').addEventListener('change', (e) => {
+      chip.classList.toggle('checked', e.target.checked);
+      updateSelectedMonths();
+    });
+    checksWrap.appendChild(chip);
+  });
+
+  document.getElementById('selectAllMonths').onclick = () => {
+    checksWrap.querySelectorAll('input').forEach(i => { i.checked = true; i.closest('.month-chip').classList.add('checked'); });
+    updateSelectedMonths();
+  };
+  document.getElementById('clearMonths').onclick = () => {
+    checksWrap.querySelectorAll('input').forEach(i => { i.checked = false; i.closest('.month-chip').classList.remove('checked'); });
+    updateSelectedMonths();
+  };
+  document.getElementById('applyRange').onclick = () => {
+    const fromIdx = RAW.months.indexOf(rangeFrom.value);
+    const toIdx = RAW.months.indexOf(rangeTo.value);
+    const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
+    checksWrap.querySelectorAll('input').forEach((i, idx) => {
+      const checked = idx >= lo && idx <= hi;
+      i.checked = checked;
+      i.closest('.month-chip').classList.toggle('checked', checked);
+    });
+    updateSelectedMonths();
+  };
+}
+function updateSelectedMonths() {
+  const checked = Array.from(document.querySelectorAll('#monthChecks input:checked')).map(i => i.value);
+  selectedMonths = RAW.months.filter(m => checked.includes(m));
+  renderKPIs();
+  renderCompareChart();
+  renderTrendChart();
+  renderRatiosGrid();
+  renderCumulative();
+}
+
+/* ---------- Tabs ---------- */
+function initTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+
+function render() {
+  renderKPIs();
+  renderMonthSelector();
+  renderCompareControls();
+  renderCompareChart();
+  renderTrendControls();
+  renderTrendChart();
+  renderRatiosGrid();
+  renderCumulativeControls();
+  renderCumulative();
+  renderTable();
+}
+
+initTabs();
+loadData().catch(err => {
+  document.querySelector('.shell').innerHTML = `<div class="empty-state">Could not load data.<br><span class="mono" style="color:#F87171;">${err.message}</span></div>`;
+});
+</script>
+
+</body>
+</html>
