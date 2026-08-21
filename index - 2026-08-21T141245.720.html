@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Snackible MIS</title>
+<script src="chart.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #0B0F14;
+    --bg-1: #111722;
+    --bg-2: #171E2B;
+    --bg-3: #1E2735;
+    --border: rgba(255,255,255,0.08);
+    --text-primary: #F2F4F7;
+    --text-secondary: #9AA4B2;
+    --text-tertiary: #667085;
+    --accent: #3ABCA2;
+    --accent-soft: rgba(58,188,162,0.14);
+    --green: #3ABCA2;
+    --red: #E35C25;
+    --amber: #FBAE25;
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-0);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .mono { font-family: 'Geist Mono', monospace; }
+
+  .shell {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 32px 24px 96px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand h1 { font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand span { font-size: 13px; color: var(--text-tertiary); }
+
+  .month-badge {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 32px; }
+  .kpi-card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .kpi-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; font-weight: 500; }
+  .kpi-value { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .kpi-delta { font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+  .kpi-delta.up { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+  .kpi-context { font-size: 11px; color: var(--text-tertiary); margin-left: 4px; }
+
+  .tabs { display: flex; gap: 4px; background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 4px; width: fit-content; margin-bottom: 20px; flex-wrap: wrap; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tab-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; transition: all 150ms ease; white-space: nowrap; }
+  .tab-btn.active { background: var(--bg-3); color: var(--text-primary); }
+  .tab-btn:hover:not(.active) { color: var(--text-primary); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 20px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .card-title { font-size: 15px; font-weight: 600; }
+
+  select {
+    background: var(--bg-2); color: var(--text-primary); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; font-family: inherit; cursor: pointer;
+  }
+
+  .chart-wrap { position: relative; height: 340px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: right; color: var(--text-tertiary); font-weight: 500; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.03em; padding: 8px 12px; border-bottom: 1px solid var(--border);
+  }
+  thead th:first-child { text-align: left; }
+  tbody td { padding: 9px 12px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  tbody td:first-child { text-align: left; color: var(--text-primary); }
+  tr.group-total td { font-weight: 700; color: var(--text-primary); border-top: 1px solid var(--border); }
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--text-tertiary); }
+
+  /* Month selector bar */
+  .month-selector { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 20px; }
+  .month-selector-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .month-selector-header .label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .quick-actions { display: flex; gap: 6px; }
+  .quick-actions button, .range-picker button {
+    background: var(--bg-2); border: 1px solid var(--border); color: var(--text-secondary);
+    font-size: 12px; padding: 6px 10px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;
+  }
+  .quick-actions button:hover, .range-picker button:hover { color: var(--text-primary); }
+  .range-picker { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .range-picker select { padding: 6px 8px; font-size: 12px; }
+  .month-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .month-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg-2); color: var(--text-secondary);
+    font-size: 12px; font-weight: 600; cursor: pointer; user-select: none; transition: all 150ms ease;
+  }
+  .month-chip.checked { background: var(--accent-soft); border-color: var(--accent); color: var(--text-primary); }
+  .month-chip input { display: none; }
+
+  .toggle-group { display: flex; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px; }
+  .toggle-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  .toggle-btn.active { background: var(--bg-3); color: var(--text-primary); }
+
+  .ratio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 700px) { .ratio-grid { grid-template-columns: 1fr; } }
+
+  .note { font-size: 12px; color: var(--text-tertiary); margin-top: 12px; }
+
+  .refresh-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-2); border: 1px solid var(--border);
+    color: var(--text-secondary); font-size: 13px; font-weight: 600;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    transition: all 150ms ease;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <h1>Snackible MIS</h1>
+      <span>Income statement</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="month-badge mono" id="latestMonthBadge">Loading…</div>
+      <button class="refresh-btn" id="refreshBtn" onclick="handleRefresh()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 4s1.5-3 7-3a7 7 0 0 1 7 7"/>
+          <path d="M15 12s-1.5 3-7 3a7 7 0 0 1-7-7"/>
+          <polyline points="1 1 1 4 4 4"/>
+          <polyline points="15 15 15 12 12 12"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <div id="kpiGrid" class="kpi-grid"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="compare">P&L Summary</button>
+    <button class="tab-btn" data-tab="trend">Trend</button>
+    <button class="tab-btn" data-tab="ratios">Ratios</button>
+    <button class="tab-btn" data-tab="cumulative">Cumulative</button>
+    <button class="tab-btn" data-tab="table">Full Statement</button>
+    <button class="tab-btn" data-tab="insights">🤖 AI Insights</button>
+  </div>
+
+  <div class="month-selector" id="monthSelectorBar">
+    <div class="month-selector-header">
+      <span class="label">Select months</span>
+      <div class="range-picker">
+        From <select id="rangeFrom"></select>
+        To <select id="rangeTo"></select>
+        <button id="applyRange">Apply range</button>
+      </div>
+      <div class="quick-actions">
+        <button id="selectAllMonths">All</button>
+        <button id="clearMonths">None</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:0 4px;" id="quickSelectBtns"></div>
+    <div class="month-checks" id="monthChecks"></div>
+  </div>
+
+  <div class="panel active" id="panel-compare">
+    <div class="card" style="padding:0;overflow-x:auto;">
+      <table id="plSummaryTable" style="width:100%;border-collapse:collapse;font-size:13px;min-width:700px;">
+        <thead id="plSummaryHead"></thead>
+        <tbody id="plSummaryBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-trend">
+    <div id="trendChartsContainer"></div>
+  </div>
+
+  <div class="panel" id="panel-ratios">
+    <div class="note" id="ratioMonthNote" style="margin-bottom:12px;"></div>
+    <div class="ratio-grid" id="ratioGrid"></div>
+  </div>
+
+  <div class="panel" id="panel-cumulative">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Cumulative KPIs (selected months)</div></div>
+      <div class="kpi-grid" id="cumKpiGrid"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Cumulative Channel Breakdown</div>
+        <select id="cumMetric"></select>
+      </div>
+      <div class="chart-wrap"><canvas id="cumChart"></canvas></div>
+      <div id="cumChartMinorWrap" style="display:none; margin-top:16px;">
+        <div class="note" style="margin-top:0; margin-bottom:8px;">Smaller channels, zoomed in</div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="cumChartMinor"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Cumulative Statement</div></div>
+      <div style="overflow-x:auto;">
+        <table id="cumTable">
+          <thead><tr id="cumTableHead"></tr></thead>
+          <tbody id="cumTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-table">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Full Income Statement</div></div>
+      <div style="overflow-x:auto;">
+        <table id="fullTable">
+          <thead><tr id="tableHead"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-insights">
+    <div class="card">
+      <div class="card-header"><div class="card-title">🤖 AI Insights</div></div>
+
+      <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">Select Month Range</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
+        <select id="ai-from" style="font-family:inherit;font-size:13px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;color:var(--text-primary);background:var(--bg-1)"></select>
+        <span style="color:var(--text-secondary);font-size:13px">to</span>
+        <select id="ai-to" style="font-family:inherit;font-size:13px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;color:var(--text-primary);background:var(--bg-1)"></select>
+      </div>
+
+      <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">Your Question</div>
+      <textarea id="ai-question" placeholder="e.g. Which channel had the best CM2% in the last 3 months? What drove the improvement?" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;padding:12px;border:1.5px solid var(--border);border-radius:8px;color:var(--text-primary);background:var(--bg-1);resize:vertical;min-height:90px;outline:none;line-height:1.6"></textarea>
+
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+        <button onclick="runAiInsight()" style="font-family:inherit;font-size:13px;font-weight:600;padding:10px 24px;background:#3ABCA2;color:#fff;border:none;border-radius:8px;cursor:pointer;">✨ Generate Insight</button>
+        <button onclick="document.getElementById('ai-question').value='Give me an executive P&L summary — revenue, gross margin, CM1, CM2 and EBITDA trends. Highlight the most important numbers.'" style="font-family:inherit;font-size:12px;padding:10px 14px;background:transparent;color:var(--text-secondary);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;">P&L Summary</button>
+        <button onclick="document.getElementById('ai-question').value='Which channels are growing vs declining? Which have the best and worst contribution margins?'" style="font-family:inherit;font-size:12px;padding:10px 14px;background:transparent;color:var(--text-secondary);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;">Channel Analysis</button>
+        <button onclick="document.getElementById('ai-question').value='What are the month-over-month trends in revenue, costs and margins? Flag any inflection points or anomalies.'" style="font-family:inherit;font-size:12px;padding:10px 14px;background:transparent;color:var(--text-secondary);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;">Trend Analysis</button>
+        <button onclick="document.getElementById('ai-question').value='What are the top 3 financial risks and top 3 opportunities the business should act on right now?'" style="font-family:inherit;font-size:12px;padding:10px 14px;background:transparent;color:var(--text-secondary);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;">Risks & Opportunities</button>
+      </div>
+    </div>
+    <div id="ai-result" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<script>
+const API_URL = '/api/sheet';
+
+const CHANNELS = [
+  'Snackible-Own website',
+  'Online Alternate Channels',
+  'B2B/Institutional sales channel',
+  'General Trade',
+  'Modern Trade'
+];
+
+const GROUP_MARKERS = [
+  { label: 'Total Revenue', metric: 'Revenue' },
+  { label: 'Total cost of goods', metric: 'Cost of Goods Sold' },
+  { label: 'Gross margin', metric: 'Gross Margin' },
+  { label: 'Total Labour Expense', metric: 'Labour Charges' },
+  { label: 'Total Delivery Expense', metric: 'Delivery Expense' },
+  { label: 'Total CM1', metric: 'CM1' },
+  { label: 'Total Marketing Expenses', metric: 'Marketing Expenses' },
+  { label: 'Total CM2', metric: 'CM2' },
+  { label: 'Total Indirect Expenses', metric: 'Other Indirect Expenses' }
+];
+
+const KPI_ROWS = [
+  { key: 'Total Net Revenue', label: 'Net Revenue' },
+  { key: 'Gross margin', label: 'Gross Margin' },
+  { key: 'Total CM1', label: 'CM1' },
+  { key: 'Total CM2', label: 'CM2' },
+  { key: 'EBITDA', label: 'EBITDA' }
+];
+
+const RATIO_DEFINITIONS = [
+  { key: 'cogs_pct', label: 'COGS % of Revenue', totalLabel: 'Total cost of goods', channelMetric: 'Cost of Goods Sold' },
+  { key: 'gross_margin_pct', label: 'Gross Margin %', totalLabel: 'Gross margin', channelMetric: 'Gross Margin' },
+  { key: 'labour_pct', label: 'Labour % of Revenue', totalLabel: 'Total Labour Expense', channelMetric: 'Labour Charges' },
+  { key: 'delivery_pct', label: 'Delivery % of Revenue', totalLabel: 'Total Delivery Expense', channelMetric: 'Delivery Expense' },
+  { key: 'cm1_pct', label: 'CM1 %', totalLabel: 'Total CM1', channelMetric: 'CM1' },
+  { key: 'marketing_pct', label: 'Marketing % of Revenue', totalLabel: 'Total Marketing Expenses', channelMetric: 'Marketing Expenses' },
+  { key: 'cm2_pct', label: 'CM2 %', totalLabel: 'Total CM2', channelMetric: 'CM2' },
+  { key: 'opex_pct', label: 'Other Indirect Expenses % of Revenue', totalLabel: 'Total Indirect Expenses', channelMetric: null }
+];
+
+const COLORS = ['#3ABCA2', '#FBAE25', '#E35C25', '#4C94D0', '#6566AE'];
+
+const MARKETING_CHANNEL_MAP = {
+  'Snackible-Own website': ['Snackible-Online [Facebook]', 'Snackible-Online [Google]', 'Snackible-Online [Discounts]', 'Jio Haptic / Goexcelsior / BOB'],
+  'Online Alternate Channels': ['Online Alternate Channels', 'Other Marketing Expenses'],
+  'B2B/Institutional sales channel': ['B2B/Institutional Sales'],
+  'General Trade': ['General Trade']
+};
+
+let RAW = null;
+let CHANNEL_GROUPS = {};
+let TOTALS_BY_LABEL = {};
+let selectedMonths = [];
+
+function fmtCurrency(n) {
+  if (n === null || n === undefined) return '—';
+  const abs = Math.abs(n);
+  let str;
+  if (abs >= 10000000) str = (n / 10000000).toFixed(2) + 'Cr';
+  else if (abs >= 100000) str = (n / 100000).toFixed(2) + 'L';
+  else if (abs >= 1000) str = (n / 1000).toFixed(1) + 'K';
+  else str = n.toFixed(0);
+  return '₹' + str;
+}
+function fmtFull(n) {
+  if (n === null || n === undefined) return '—';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+function fmtPct(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return n.toFixed(1) + '%';
+}
+
+async function loadData() {
+  const res = await fetch(API_URL);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  RAW = json;
+  // Default to FY27 (Apr-26 onwards)
+  const apr26Idx = RAW.months.indexOf('Apr-26');
+  selectedMonths = apr26Idx >= 0 ? RAW.months.slice(apr26Idx) : [...RAW.months];
+  processGroups();
+  buildMarketingChannelGroup();
+  buildTotalsOnlyGroups();
+  render();
+}
+
+async function handleRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  btn.disabled = true;
+  try {
+    const res = await fetch(API_URL + '?t=' + Date.now()); // cache-bust
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    RAW = json;
+    selectedMonths = [...RAW.months];
+    processGroups();
+    buildMarketingChannelGroup();
+    buildTotalsOnlyGroups();
+    render();
+  } catch (err) {
+    alert('Refresh failed: ' + err.message);
+  } finally {
+    btn.classList.remove('spinning');
+    btn.disabled = false;
+  }
+}
+
+function processGroups() {
+  let buffer = [];
+  RAW.rows.forEach(row => {
+    const marker = GROUP_MARKERS.find(m => m.label === row.label);
+    if (marker) {
+      const channelRowsRaw = buffer.filter(r => CHANNELS.includes(r.label));
+      const dedupMap = new Map();
+      channelRowsRaw.forEach(r => dedupMap.set(r.label, r));
+      const channelRows = CHANNELS.map(c => dedupMap.get(c)).filter(Boolean);
+      CHANNEL_GROUPS[marker.metric] = channelRows;
+      buffer = [];
+    } else {
+      buffer.push(row);
+    }
+    TOTALS_BY_LABEL[row.label] = row;
+  });
+}
+
+function buildMarketingChannelGroup() {
+  const rows = CHANNELS.map(channel => {
+    const sourceLabels = MARKETING_CHANNEL_MAP[channel];
+    const values = {};
+    RAW.months.forEach(month => {
+      if (!sourceLabels) { values[month] = null; return; }
+      let sum = null;
+      sourceLabels.forEach(lbl => {
+        const r = TOTALS_BY_LABEL[lbl];
+        if (r && r.values[month] !== null && r.values[month] !== undefined) {
+          sum = (sum || 0) + r.values[month];
+        }
+      });
+      values[month] = sum;
+    });
+    return { label: channel, section: 'Marketing Expenses', values };
+  });
+  CHANNEL_GROUPS['Marketing Expenses'] = rows;
+}
+
+// Adds total-only (no channel breakdown) entries for EBITDA, PBT & Dep, Other Indirect Expenses
+const TOTALS_ONLY_METRICS = [
+  { metric: 'Other Indirect Expenses', rowKey: 'Total Indirect Expenses' },
+  { metric: 'EBITDA',                  rowKey: 'EBITDA' },
+  { metric: 'PBT & Depreciation',      rowKey: 'PBT and Depreciation' }
+];
+function buildTotalsOnlyGroups() {
+  TOTALS_ONLY_METRICS.forEach(({ metric, rowKey }) => {
+    const row = TOTALS_BY_LABEL[rowKey];
+    if (!row) return;
+    // Single synthetic row labelled "Total" so the bar chart shows one bar
+    CHANNEL_GROUPS[metric] = [{ label: 'Total', values: row.values }];
+  });
+}
+
+function latestMonth() { return RAW.months[RAW.months.length - 1]; }
+function prevMonth() { return RAW.months.length > 1 ? RAW.months[RAW.months.length - 2] : null; }
+
+function renderKPIs() {
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = '';
+  const months = selectedMonths.length ? selectedMonths : RAW.months;
+  const lm = latestMonth();
+  const pm = prevMonth();
+  KPI_ROWS.forEach(kpi => {
+    const row = TOTALS_BY_LABEL[kpi.key];
+    const val = row ? sumAcrossMonths(row, months) : null;
+    let deltaHtml = '';
+    if (row && pm) {
+      const lmVal = row.values[lm];
+      const pmVal = row.values[pm];
+      if (lmVal !== null && pmVal !== null && pmVal !== 0) {
+        const pct = ((lmVal - pmVal) / Math.abs(pmVal)) * 100;
+        const up = pct >= 0;
+        deltaHtml = `<span class="kpi-delta ${up ? 'up' : 'down'}">${up ? '↑' : '↓'} ${Math.abs(pct).toFixed(1)}%</span><span class="kpi-context">MoM, ${pm} → ${lm}</span>`;
+      }
+    }
+    const card = document.createElement('div');
+    card.className = 'kpi-card';
+    card.innerHTML = `<div class="kpi-label">${kpi.label}</div><div class="kpi-value">${fmtCurrency(val)}</div>${deltaHtml}`;
+    grid.appendChild(card);
+  });
+  document.getElementById('latestMonthBadge').textContent = months.length === RAW.months.length ? 'All months' : months.length + ' month' + (months.length === 1 ? '' : 's') + ' selected';
+}
+
+function splitByMagnitude(labels, data) {
+  const absVals = data.map(v => v === null || v === undefined ? 0 : Math.abs(v));
+  const maxAbs = Math.max(...absVals, 0);
+  if (maxAbs === 0) return { mainLabels: labels, mainData: data, minorLabels: [], minorData: [] };
+  const threshold = maxAbs * 0.15;
+  const mainLabels = [], mainData = [], minorLabels = [], minorData = [];
+  labels.forEach((l, i) => {
+    const v = data[i];
+    if (v !== null && v !== undefined && Math.abs(v) < threshold) { minorLabels.push(l); minorData.push(v); }
+    else { mainLabels.push(l); mainData.push(v); }
+  });
+  return { mainLabels, mainData, minorLabels, minorData };
+}
+// Plugin for TREND charts only: value label + MoM % change
+const trendLabelPlugin = {
+  id: 'trendLabelPlugin',
+  afterDatasetsDraw(chart) {
+    if (!chart._isTrendChart) return;
+    const { ctx, data } = chart;
+    const dataset = data.datasets[0];
+    const meta = chart.getDatasetMeta(0);
+    const ghostOffset = chart._ghostOffset || 0;
+
+    meta.data.forEach((point, i) => {
+      // Skip the invisible ghost point entirely
+      if (ghostOffset > 0 && i < ghostOffset) return;
+
+      const val = dataset.data[i];
+      if (val === null || val === undefined) return;
+      const primaryLabel = chart._isNetRev ? fmtCurrency(val) : val.toFixed(1) + '%';
+
+      // MoM: compare to previous index (which may be the ghost)
+      let momLabel = '';
+      let momColor = '#9AA4B2';
+      if (i > 0) {
+        const prev = dataset.data[i - 1];
+        if (prev !== null && prev !== undefined && prev !== 0) {
+          const chg = ((val - prev) / Math.abs(prev)) * 100;
+          momLabel = (chg >= 0 ? '+' : '') + chg.toFixed(1) + '% MoM';
+          momColor = chg >= 0 ? '#3ABCA2' : '#E35C25';
+        }
+      }
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#F2F4F7';
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.fillText(primaryLabel, point.x, point.y - 12);
+      if (momLabel) {
+        ctx.fillStyle = momColor;
+        ctx.font = '500 10px Inter, sans-serif';
+        ctx.fillText(momLabel, point.x, point.y + 20);
+      }
+      ctx.restore();
+    });
+  }
+};
+
+const dataLabelPlugin = {
+  id: 'dataLabelPlugin',
+  afterDatasetsDraw(chart, args, opts) {
+    if (chart._isTrendChart) return; // trend charts use trendLabelPlugin instead
+    if (chart._isExpPane) return; // expense panes use custom momPlugin
+    const { ctx } = chart;
+    chart.data.datasets.forEach((dataset, i) => {
+      const meta = chart.getDatasetMeta(i);
+      meta.data.forEach((bar, index) => {
+        const value = dataset.data[index];
+        if (value === null || value === undefined) return;
+        const label = opts.formatter ? opts.formatter(value) : value;
+        ctx.save();
+        ctx.fillStyle = '#F2F4F7';
+        ctx.font = '600 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        const yPos = value >= 0 ? bar.y - 8 : bar.y + 16;
+        ctx.fillText(label, bar.x, yPos);
+        ctx.restore();
+      });
+    });
+  }
+};
+Chart.register(trendLabelPlugin);
+Chart.register(dataLabelPlugin);
+
+function barOptions(tooltipFmt, axisFmt) {
+  axisFmt = axisFmt || tooltipFmt;
+  return {
+    responsive: true, maintainAspectRatio: false,
+    layout: { padding: { top: 20 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (c) => tooltipFmt(c.raw) } },
+      dataLabelPlugin: { formatter: tooltipFmt }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', callback: (v) => axisFmt(v) } }
+    }
+  };
+}
+
+/* ---------- Channel Comparison ---------- */
+/* ---------- P&L Summary ---------- */
+const PL_ROWS = [
+  { key: 'Total Net Revenue',         label: 'Net Revenue',               section: 'header', pctOf: null },
+  { key: 'Total cost of goods',       label: 'COGS',                      section: 'normal', pctOf: 'Total Net Revenue' },
+  { key: 'Gross margin',              label: 'Gross Margin',              section: 'subtotal', pctOf: 'Total Net Revenue' },
+  { key: 'Total Labour Expense',      label: 'Labour Expense',            section: 'normal', pctOf: 'Total Net Revenue' },
+  { key: 'Total Delivery Expense',    label: 'Logistics / Delivery',      section: 'normal', pctOf: 'Total Net Revenue' },
+  { key: 'Total CM1',                 label: 'CM1',                       section: 'subtotal', pctOf: 'Total Net Revenue' },
+  { key: 'Total Marketing Expenses',  label: 'Marketing Expense',         section: 'normal', pctOf: 'Total Net Revenue' },
+  { key: 'Total CM2',                 label: 'CM2',                       section: 'subtotal', pctOf: 'Total Net Revenue' },
+  { key: 'Total Indirect Expenses',   label: 'Other Operating Expenses',  section: 'normal', pctOf: 'Total Net Revenue' },
+  { key: 'EBITDA',                    label: 'EBITDA',                    section: 'subtotal', pctOf: 'Total Net Revenue' },
+];
+
+const CM2_CHANNELS = [
+  { key: 'Snackible-Own Website CM2%',           label: 'Own Website' },
+  { key: 'Online Alternate Channels CM2%',        label: 'Online Alternate' },
+  { key: 'B2B/Institutional sales channel CM2%', label: 'B2B / Institutional' },
+  { key: 'General Trade CM2%',                   label: 'General Trade' },
+  { key: 'Modern Trade CM2%',                    label: 'Modern Trade' },
+];
+let cm2Expanded = false;
+
+function renderPLSummary() {
+  const months = selectedMonths.length ? selectedMonths : RAW.months;
+  const head = document.getElementById('plSummaryHead');
+  const body = document.getElementById('plSummaryBody');
+
+  // Header row
+  head.innerHTML = `<tr style="background:var(--bg-2);">
+    <th style="text-align:left;padding:12px 16px;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;position:sticky;left:0;background:var(--bg-2);min-width:180px;border-bottom:2px solid var(--border);">Line Item</th>
+    ${months.map(m => `<th style="text-align:right;padding:12px 10px;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;min-width:110px;border-bottom:2px solid var(--border);">${m}</th>`).join('')}
+  </tr>`;
+
+  body.innerHTML = '';
+  PL_ROWS.forEach(def => {
+    const row = TOTALS_BY_LABEL[def.key];
+    const isHeader = def.section === 'header';
+    const isSubtotal = def.section === 'subtotal';
+
+    let rowStyle = 'border-bottom:1px solid var(--border);';
+    let labelStyle = 'text-align:left;padding:11px 16px;position:sticky;left:0;';
+    let cellStyle = 'text-align:right;padding:11px 10px;';
+
+    if (isHeader) {
+      rowStyle += 'background:var(--bg-1);';
+      labelStyle += 'font-weight:700;color:var(--text-primary);font-size:13px;background:var(--bg-1);';
+      cellStyle += 'font-weight:700;font-size:13px;';
+    } else if (isSubtotal) {
+      rowStyle += 'background:var(--bg-2);border-top:1.5px solid var(--border);';
+      labelStyle += 'font-weight:700;color:var(--text-primary);font-size:13px;background:var(--bg-2);';
+      cellStyle += 'font-weight:700;font-size:13px;';
+    } else {
+      labelStyle += 'font-weight:400;color:var(--text-secondary);font-size:12px;padding-left:28px;background:var(--bg-1);';
+      cellStyle += 'color:var(--text-secondary);font-size:12px;';
+      rowStyle += 'background:var(--bg-1);';
+    }
+
+    const cells = months.map(m => {
+      const val = row ? (row.values[m] ?? null) : null;
+      const netRevRow = TOTALS_BY_LABEL['Total Net Revenue'];
+      const netRev = netRevRow ? (netRevRow.values[m] ?? null) : null;
+      const pct = (def.pctOf && val !== null && netRev && netRev !== 0) ? (val / netRev * 100) : null;
+
+      const valStr = val !== null ? fmtFull(val) : '—';
+      const isCostRow = def.section === 'normal';
+      const pctColor = isCostRow ? '#60A5FA' : (pct !== null && pct < 0 ? '#F87171' : '#34D399');
+      const pctStr = pct !== null ? `<div style="font-size:10px;color:${pctColor};margin-top:2px;">${pct.toFixed(1)}%</div>` : '<div style="font-size:10px;color:transparent;">—</div>';
+      const valColor = val !== null && val < 0 && !isHeader ? 'color:#F87171;' : '';
+
+      return `<td style="${cellStyle}${valColor}${isSubtotal || isHeader ? 'border-left:1px solid var(--border);' : ''}">${valStr}${pctStr}</td>`;
+    }).join('');
+
+    const isCM2 = def.key === 'Total CM2';
+
+    if (isCM2) {
+      const expandIcon = cm2Expanded ? '▲' : '▼';
+      body.innerHTML += `<tr style="${rowStyle}" id="cm2Row" onclick="toggleCM2()" style="cursor:pointer;">
+        <td style="${labelStyle}cursor:pointer;">CM2 <span style="font-size:10px;color:var(--text-secondary);margin-left:6px;">${expandIcon} channels</span></td>
+        ${cells}
+      </tr>`;
+
+      if (cm2Expanded) {
+        // CM2% of Net Revenue row
+        const pctCells = months.map(m => {
+          const netRevRow = TOTALS_BY_LABEL['Total Net Revenue'];
+          const netRev = netRevRow ? (netRevRow.values[m] ?? null) : null;
+          const cm2Row = TOTALS_BY_LABEL['Total CM2'];
+          const cm2Val = cm2Row ? (cm2Row.values[m] ?? null) : null;
+          const pct = (cm2Val !== null && netRev && netRev !== 0) ? (cm2Val / netRev * 100) : null;
+          const pctStr = pct !== null ? pct.toFixed(1) + '%' : '—';
+          const color = pct !== null && pct < 0 ? '#F87171' : '#34D399';
+          return `<td style="text-align:right;padding:8px 10px;font-size:12px;color:${color};border-left:1px solid var(--border);">${pctStr}</td>`;
+        }).join('');
+        body.innerHTML += `<tr style="background:var(--bg-2);border-bottom:1px solid var(--border);">
+          <td style="text-align:left;padding:8px 28px;font-size:12px;color:var(--text-secondary);position:sticky;left:0;background:var(--bg-2);">CM2 % of Net Revenue</td>
+          ${pctCells}
+        </tr>`;
+
+        // Channel CM2% rows
+        CM2_CHANNELS.forEach(ch => {
+          const chRow = TOTALS_BY_LABEL[ch.key];
+          const chCells = months.map(m => {
+            const val = chRow ? (chRow.values[m] ?? null) : null;
+            const valStr = val !== null ? val.toFixed(1) + '%' : '—';
+            const color = val !== null && val < 0 ? '#F87171' : '#34D399';
+            return `<td style="text-align:right;padding:8px 10px;font-size:12px;color:${color};">${valStr}</td>`;
+          }).join('');
+          body.innerHTML += `<tr style="background:var(--bg-1);border-bottom:1px solid var(--border);">
+            <td style="text-align:left;padding:8px 36px;font-size:12px;color:var(--text-secondary);position:sticky;left:0;background:var(--bg-1);">↳ ${ch.label}</td>
+            ${chCells}
+          </tr>`;
+        });
+      }
+    } else {
+      body.innerHTML += `<tr style="${rowStyle}">
+        <td style="${labelStyle}">${def.label}</td>
+        ${cells}
+      </tr>`;
+    }
+  });
+}
+
+function toggleCM2() { cm2Expanded = !cm2Expanded; renderPLSummary(); }
+
+function renderCompareControls() { /* no-op — replaced by P&L summary */ }
+function renderCompareChart() { renderPLSummary(); }
+
+/* ---------- Trend ---------- */
+// Mar-26 ghost baseline — feeds MoM% for Apr-26, never shown as a visible point
+const MAR26 = 'Mar-26';
+const MAR26_BASELINE = {
+  'Total Net Revenue':      23547670,
+  'Total cost of goods':    11630935,
+  'Gross margin':           11916735,
+  'Total Labour Expense':    444348,
+  'Total Delivery Expense':  2416546,
+  'Total CM1':               8987776,
+  'Total Marketing Expenses':7847712,
+  'Total CM2':               1140063,
+  'Total Indirect Expenses': 2228734,
+  'EBITDA':                 -1088670,
+  'PBT and Depreciation':   -1188670
+};
+
+const TREND_METRICS = [
+  { label: 'Net Revenue',             rowKey: 'Total Net Revenue',      isNetRev: true },
+  { label: 'Cost of Goods Sold',      rowKey: 'Total cost of goods' },
+  { label: 'Gross Margin',            rowKey: 'Gross margin' },
+  { label: 'Labour Charges',          rowKey: 'Total Labour Expense' },
+  { label: 'Delivery Expense',        rowKey: 'Total Delivery Expense' },
+  { label: 'CM1',                     rowKey: 'Total CM1' },
+  { label: 'Marketing Expenses',      rowKey: 'Total Marketing Expenses' },
+  { label: 'CM2',                     rowKey: 'Total CM2' },
+  { label: 'Other Indirect Expenses', rowKey: 'Total Indirect Expenses' },
+  { label: 'EBITDA',                  rowKey: 'EBITDA' },
+  { label: 'PBT & Depreciation',      rowKey: 'PBT and Depreciation' }
+];
+const trendChartInstances = {};
+function renderTrendControls() { /* no-op */ }
+function renderTrendChart() {
+  const months = selectedMonths.length ? selectedMonths : RAW.months;
+  const netRevRow = TOTALS_BY_LABEL['Total Net Revenue'];
+  const container = document.getElementById('trendChartsContainer');
+  container.innerHTML = '';
+  Object.keys(trendChartInstances).forEach(k => {
+    if (trendChartInstances[k]) trendChartInstances[k].destroy();
+    delete trendChartInstances[k];
+  });
+
+  const firstVisibleIsApr = months[0] === 'Apr-26';
+  const mar26NetRev = MAR26_BASELINE['Total Net Revenue'];
+
+  // Helper: build one standard individual card (used for Revenue + Margins)
+  function buildSingleCard(metric, idx) {
+    const row = TOTALS_BY_LABEL[metric.rowKey];
+    if (!row) return;
+    const canvasId = 'trendChart_' + idx;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '16px';
+    const subtitle = metric.isNetRev ? '₹ absolute' : '% of Net Revenue';
+    card.innerHTML = `
+      <div class="card-header" style="margin-bottom:4px;">
+        <div class="card-title">${metric.label}
+          <span style="color:var(--text-tertiary);font-weight:400;font-size:12px;margin-left:6px;">${subtitle}</span>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px;"><canvas id="${canvasId}"></canvas></div>`;
+    container.appendChild(card);
+    const mar26Raw = MAR26_BASELINE[metric.rowKey] ?? null;
+    function toChartVal(rawVal, monthNetRev) {
+      if (metric.isNetRev) return rawVal ?? null;
+      if (rawVal === null || rawVal === undefined || !monthNetRev || monthNetRev === 0) return null;
+      return (rawVal / monthNetRev) * 100;
+    }
+    const visibleData = months.map(m => {
+      const val = row.values[m] ?? null;
+      const netRev = netRevRow ? (netRevRow.values[m] ?? null) : null;
+      return toChartVal(val, netRev);
+    });
+    const nonNull = visibleData.filter(v => v !== null);
+    const allNeg = nonNull.length > 0 && nonNull.every(v => v <= 0);
+    const lineColor = allNeg ? '#E35C25' : '#3ABCA2';
+    const fillColor = allNeg ? 'rgba(227,92,37,0.12)' : 'rgba(58,188,162,0.12)';
+    const yTickCb = metric.isNetRev ? v => fmtCurrency(v) : v => v.toFixed(1) + '%';
+    const tooltipCb = metric.isNetRev ? c => fmtFull(c.raw) : c => fmtPct(c.raw);
+
+    let chartLabels, chartData, pointRadii;
+    if (firstVisibleIsApr && mar26Raw !== null) {
+      chartLabels = [MAR26, ...months];
+      chartData = [toChartVal(mar26Raw, mar26NetRev), ...visibleData];
+      pointRadii = [0, ...months.map(() => 5)];
+    } else {
+      chartLabels = [...months];
+      chartData = [...visibleData];
+      pointRadii = months.map(() => 5);
+    }
+    const instance = new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: { labels: chartLabels, datasets: [{ data: chartData, borderColor: lineColor, backgroundColor: fillColor, fill: true, tension: 0.3, pointRadius: pointRadii, pointBackgroundColor: lineColor, borderWidth: 2 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 30, bottom: 28 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: tooltipCb, filter: item => item.dataIndex !== 0 || !firstVisibleIsApr } },
+          dataLabelPlugin: { disabled: true }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 11 }, callback(val, i) { if (firstVisibleIsApr && i === 0) return ''; return this.getLabelForValue(val); } } },
+          y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', font: { size: 10 }, callback: yTickCb } }
+        }
+      }
+    });
+    instance._isTrendChart = true;
+    instance._isNetRev = !!metric.isNetRev;
+    instance._ghostOffset = firstVisibleIsApr && mar26Raw !== null ? 1 : 0;
+    trendChartInstances[idx] = instance;
+  }
+
+  // --- Revenue card (index 0) ---
+  buildSingleCard(TREND_METRICS[0], 0);
+
+  // --- Synced multi-pane: Expenses (COGS, Labour, Logistics, Marketing, OpEx) ---
+  const EXPENSE_METRICS = [
+    { label: 'COGS',               rowKey: 'Total cost of goods',      color: '#FBAE25' },
+    { label: 'Labour',             rowKey: 'Total Labour Expense',     color: '#60A5FA' },
+    { label: 'Logistics',          rowKey: 'Total Delivery Expense',   color: '#A78BFA' },
+    { label: 'Marketing Expense',  rowKey: 'Total Marketing Expenses', color: '#F87171' },
+    { label: 'Other OpEx',         rowKey: 'Total Indirect Expenses',  color: '#34D399' },
+  ];
+
+  const expWrapper = document.createElement('div');
+  expWrapper.style.cssText = 'margin-bottom:16px;';
+  const expTitle = document.createElement('div');
+  expTitle.style.cssText = 'font-size:13px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding:0 4px;';
+  expTitle.textContent = 'Expense % of Net Revenue';
+  expWrapper.appendChild(expTitle);
+  container.appendChild(expWrapper);
+
+  // Ghost offset for expense panes
+  const expGhostOffset = firstVisibleIsApr ? 1 : 0;
+  const expChartLabels = firstVisibleIsApr ? [MAR26, ...months] : [...months];
+  const expSyncedCharts = [];
+
+  EXPENSE_METRICS.forEach((exp, ei) => {
+    const row = TOTALS_BY_LABEL[exp.rowKey];
+    if (!row) return;
+
+    const visibleData = months.map(m => {
+      const val = row.values[m] ?? null;
+      const nRev = netRevRow ? (netRevRow.values[m] ?? null) : null;
+      if (val === null || !nRev || nRev === 0) return null;
+      return (val / nRev) * 100;
+    });
+
+    const mar26Raw = MAR26_BASELINE[exp.rowKey] ?? null;
+    const ghostPct = (expGhostOffset > 0 && mar26Raw !== null && mar26NetRev)
+      ? (mar26Raw / mar26NetRev) * 100 : null;
+
+    const chartData = [...visibleData];
+    const pointRadii = months.map(() => 5);
+    const expChartLabelsLocal = [...months];
+
+    const momData = months.map((m, i) => {
+      const cur = visibleData[i];
+      const prev = i === 0 ? ghostPct : visibleData[i - 1];
+      if (cur === null || prev === null) return null;
+      return cur - prev;
+    });
+
+    const validVals = visibleData.filter(v => v !== null);
+    const yMin = validVals.length ? Math.min(...validVals) : 0;
+    const yMax = validVals.length ? Math.max(...validVals) : 1;
+    const yPad = (yMax - yMin) * 0.5 || 1;
+
+    const isLast = ei === EXPENSE_METRICS.length - 1;
+    const canvasId = 'expPane_' + ei;
+
+    const pane = document.createElement('div');
+    pane.style.cssText = `background:#1E2A35;border-radius:${ei===0?'10px 10px 0 0':isLast?'0 0 10px 10px':'0'};border-bottom:${isLast?'none':'1px solid rgba(255,255,255,0.07)'};padding:10px 16px 4px;`;
+    pane.innerHTML = `
+      <div style="font-size:11px;font-weight:700;color:${exp.color};margin-bottom:2px;text-transform:uppercase;letter-spacing:.05em;">${exp.label} <span style="font-weight:400;color:#9AA4B2;">% of Net Revenue</span></div>
+      <div style="position:relative;height:160px;"><canvas id="${canvasId}"></canvas></div>`;
+    expWrapper.appendChild(pane);
+
+    const momPlugin = {
+      id: 'expMom_' + ei,
+      afterDatasetsDraw(chart) {
+        const ctx2 = chart.ctx;
+        const meta = chart.getDatasetMeta(1);
+        const chartArea = chart.chartArea;
+        ctx2.save();
+        meta.data.forEach((pt, i) => {
+          const clampedX = Math.max(chartArea.left + 30, Math.min(pt.x, chartArea.right - 30));
+          const val = visibleData[i];
+          const mom = momData[i];
+          if (val === null) return;
+          const valStr = val.toFixed(2) + '%';
+          ctx2.font = '600 11px Inter, sans-serif';
+          const tw = ctx2.measureText(valStr).width;
+          ctx2.fillStyle = '#fff';
+          ctx2.beginPath();
+          if (ctx2.roundRect) ctx2.roundRect(clampedX - tw/2 - 5, pt.y - 30, tw + 10, 17, 4);
+          else ctx2.rect(clampedX - tw/2 - 5, pt.y - 30, tw + 10, 17);
+          ctx2.fill();
+          ctx2.fillStyle = '#111';
+          ctx2.textAlign = 'center';
+          ctx2.fillText(valStr, clampedX, pt.y - 18);
+          if (mom !== null) {
+            const sign = mom >= 0 ? '+' : '';
+            const momColor = mom > 0 ? '#F87171' : '#34D399';
+            ctx2.font = '500 9px Inter, sans-serif';
+            ctx2.fillStyle = momColor;
+            ctx2.fillText(sign + mom.toFixed(2) + 'pp MoM', clampedX, pt.y + 18);
+          }
+        });
+        ctx2.restore();
+      }
+    };
+
+    const shadowColor = { '#FBAE25': 'rgba(251,174,37,0.15)', '#60A5FA': 'rgba(96,165,250,0.15)', '#A78BFA': 'rgba(167,139,250,0.15)', '#F87171': 'rgba(248,113,113,0.15)', '#34D399': 'rgba(52,211,153,0.15)' }[exp.color] || 'rgba(255,255,255,0.08)';
+
+    const inst = new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      plugins: [momPlugin],
+      data: {
+        labels: expChartLabelsLocal,
+        datasets: [
+          { data: chartData, borderColor: 'transparent', backgroundColor: shadowColor, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 0, borderWidth: 0 },
+          { data: chartData, borderColor: exp.color, backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: pointRadii, pointHoverRadius: pointRadii.map(() => 7), pointBackgroundColor: exp.color, borderWidth: 2 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 34, right: 40, bottom: 24 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: 'index', intersect: false, callbacks: { label: c => ` ${exp.label}: ${c.raw !== null ? c.raw.toFixed(1)+'%' : '—'}` } },
+          dataLabelPlugin: { disabled: true }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { display: isLast, color: '#9AA4B2', font: { size: 10 }, autoSkip: false } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9AA4B2', font: { size: 9 }, maxTicksLimit: 5, callback: v => v.toFixed(1) + '%' }, afterFit(axis) { axis.width = 48; } }
+        },
+        onHover: (e, els, chart) => {
+          if (!els.length) return;
+          const di = els[0].index;
+          expSyncedCharts.forEach(c => { if (c !== chart) { c.tooltip.setActiveElements([{datasetIndex:0,index:di}],{x:0,y:0}); c.update('none'); } });
+        }
+      }
+    });
+    trendChartInstances['exp_' + ei] = inst;
+    inst._isExpPane = true;
+    expSyncedCharts.push(inst);
+  });
+
+  // --- Margin cards (Gross Margin, CM1, CM2, EBITDA) as individual cards ---
+  const MARGIN_METRICS = TREND_METRICS.filter(m => ['Gross margin','Total CM1','Total CM2','EBITDA'].includes(m.rowKey));
+  MARGIN_METRICS.forEach((metric, mi) => {
+    buildSingleCard(metric, 'margin_' + mi);
+  });
+}
+
+let ratioChartInstances = {};
+function renderRatiosGrid() {
+  const grid = document.getElementById('ratioGrid');
+  const months = selectedMonths;
+  const monthNote = document.getElementById('ratioMonthNote');
+  if (months.length === 0) {
+    monthNote.textContent = 'No months selected. Check at least one month to see ratios.';
+  } else if (months.length === 1) {
+    monthNote.textContent = 'Showing ' + months[0] + '.';
+  } else {
+    monthNote.textContent = 'Cumulative across ' + months.length + ' months: ' + months.join(', ') + '.';
+  }
+
+  if (grid.children.length === 0) {
+    RATIO_DEFINITIONS.forEach(def => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<div class="card-header"><div class="card-title">${def.label}</div></div><div class="chart-wrap" style="height:220px;"><canvas id="ratioChart_${def.key}"></canvas></div>`;
+      grid.appendChild(card);
+    });
+  }
+
+  RATIO_DEFINITIONS.forEach(def => {
+    const denomRows = CHANNEL_GROUPS['Revenue'] || [];
+    let labels, data;
+
+    if (def.channelMetric && CHANNEL_GROUPS[def.channelMetric] && CHANNEL_GROUPS[def.channelMetric].length > 0) {
+      const numRows = CHANNEL_GROUPS[def.channelMetric];
+      labels = numRows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
+      data = numRows.map(r => {
+        const denomRow = denomRows.find(d => d.label === r.label);
+        const num = months.length ? sumAcrossMonths(r, months) : null;
+        const denom = denomRow && months.length ? sumAcrossMonths(denomRow, months) : null;
+        if (num === null || denom === null || denom === 0) return null;
+        return (num / denom) * 100;
+      });
+    } else {
+      const numRow = TOTALS_BY_LABEL[def.totalLabel];
+      const denomRow = TOTALS_BY_LABEL['Total Revenue'];
+      const num = numRow && months.length ? sumAcrossMonths(numRow, months) : null;
+      const denom = denomRow && months.length ? sumAcrossMonths(denomRow, months) : null;
+      labels = ['Overall'];
+      data = [(num === null || denom === null || denom === 0) ? null : (num / denom) * 100];
+    }
+
+    const ctx = document.getElementById('ratioChart_' + def.key);
+    if (ratioChartInstances[def.key]) ratioChartInstances[def.key].destroy();
+    ratioChartInstances[def.key] = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ data, backgroundColor: data.map(v => v < 0 ? '#E35C25' : '#FBAE25'), borderRadius: 6, maxBarThickness: 48 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 20 } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtPct(c.raw) } }, dataLabelPlugin: { formatter: fmtPct } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#9AA4B2', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9AA4B2', font: { size: 10 }, callback: (v) => v + '%' } }
+        }
+      }
+    });
+  });
+}
+
+/* ---------- Cumulative ---------- */
+let cumChartInstance = null;
+let cumChartMinorInstance = null;
+function sumAcrossMonths(row, months) {
+  let hasValue = false;
+  let sum = 0;
+  months.forEach(m => {
+    const v = row.values[m];
+    if (v !== null && v !== undefined) { sum += v; hasValue = true; }
+  });
+  return hasValue ? sum : null;
+}
+function renderCumulativeControls() {
+  const sel = document.getElementById('cumMetric');
+  sel.innerHTML = '';
+  Object.keys(CHANNEL_GROUPS).forEach(metric => {
+    if (CHANNEL_GROUPS[metric].length === 0) return;
+    const opt = document.createElement('option');
+    opt.value = metric; opt.textContent = metric;
+    sel.appendChild(opt);
+  });
+  sel.onchange = renderCumulative;
+}
+function getDisplayRows() {
+  const channelLabels = new Set(CHANNELS);
+  const result = [];
+  let buffer = [];
+  const flush = (endRow) => {
+    const lastIndexForChannel = {};
+    buffer.forEach((r, idx) => { if (channelLabels.has(r.label)) lastIndexForChannel[r.label] = idx; });
+    buffer.forEach((r, idx) => {
+      if (channelLabels.has(r.label) && lastIndexForChannel[r.label] !== idx) return;
+      result.push(r);
+    });
+    if (endRow) result.push(endRow);
+    buffer = [];
+  };
+  RAW.rows.forEach(row => {
+    const marker = GROUP_MARKERS.find(m => m.label === row.label);
+    if (marker) { flush(row); } else { buffer.push(row); }
+  });
+  flush(null);
+  return result;
+}
+
+function renderCumulative() {
+  const months = selectedMonths.length ? selectedMonths : RAW.months;
+
+  const grid = document.getElementById('cumKpiGrid');
+  grid.innerHTML = '';
+  KPI_ROWS.forEach(kpi => {
+    const row = TOTALS_BY_LABEL[kpi.key];
+    const val = row ? sumAcrossMonths(row, months) : null;
+    const card = document.createElement('div');
+    card.className = 'kpi-card';
+    card.innerHTML = `<div class="kpi-label">${kpi.label}</div><div class="kpi-value">${fmtCurrency(val)}</div>`;
+    grid.appendChild(card);
+  });
+
+  const metric = document.getElementById('cumMetric').value;
+  const rows = CHANNEL_GROUPS[metric] || [];
+  const labels = rows.map(r => r.label.replace('Snackible-', '').replace(' sales channel', '').replace(' Channels', ''));
+  const data = rows.map(r => sumAcrossMonths(r, months));
+
+  const ctx = document.getElementById('cumChart');
+  if (cumChartInstance) cumChartInstance.destroy();
+  cumChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: data.map(v => v < 0 ? '#E35C25' : '#3ABCA2'), borderRadius: 6, maxBarThickness: 56 }] },
+    options: barOptions(fmtFull, fmtCurrency)
+  });
+  document.getElementById('cumChartMinorWrap').style.display = 'none';
+
+  const head = document.getElementById('cumTableHead');
+  head.innerHTML = '<th>Line Item</th><th>Cumulative (' + months.length + ' mo)</th>';
+  const body = document.getElementById('cumTableBody');
+  body.innerHTML = '';
+  getDisplayRows().forEach(row => {
+    const isPctRow = row.label.trim().startsWith('%');
+    const isTotal = row.label.toLowerCase().includes('total') || ['Gross margin', 'EBITDA'].includes(row.label);
+    const val = sumAcrossMonths(row, months);
+    const tr = document.createElement('tr');
+    if (isTotal) tr.className = 'group-total';
+    let displayVal = '—';
+    if (val !== null) displayVal = isPctRow ? fmtPct(val / months.length) : fmtFull(val);
+    tr.innerHTML = `<td>${row.label}</td><td>${displayVal}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* ---------- Full Table ---------- */
+function renderTable() {
+  const head = document.getElementById('tableHead');
+  head.innerHTML = '<th>Line Item</th>' + RAW.months.map(m => `<th>${m}</th>`).join('');
+  const body = document.getElementById('tableBody');
+  body.innerHTML = '';
+  getDisplayRows().forEach(row => {
+    const isTotal = row.label.toLowerCase().includes('total') || ['Gross margin', 'EBITDA'].includes(row.label);
+    const isPctRow = row.label.trim().startsWith('%');
+    const tr = document.createElement('tr');
+    if (isTotal) tr.className = 'group-total';
+    const cells = [`<td>${row.label}</td>`].concat(
+      RAW.months.map(m => {
+        const v = row.values[m];
+        if (v === null) return '<td>—</td>';
+        return `<td>${isPctRow ? v.toFixed(1) + '%' : fmtFull(v)}</td>`;
+      })
+    );
+    tr.innerHTML = cells.join('');
+    body.appendChild(tr);
+  });
+}
+
+/* ---------- Month selector ---------- */
+function renderMonthSelector() {
+  const rangeFrom = document.getElementById('rangeFrom');
+  const rangeTo = document.getElementById('rangeTo');
+  rangeFrom.innerHTML = ''; rangeTo.innerHTML = '';
+  RAW.months.forEach(m => {
+    rangeFrom.appendChild(new Option(m, m));
+    rangeTo.appendChild(new Option(m, m));
+  });
+  rangeFrom.value = RAW.months[0];
+  rangeTo.value = RAW.months[RAW.months.length - 1];
+
+  const checksWrap = document.getElementById('monthChecks');
+  checksWrap.innerHTML = '';
+  const apr26Idx = RAW.months.indexOf('Apr-26');
+  RAW.months.forEach((m, idx) => {
+    const isDefault = apr26Idx >= 0 ? idx >= apr26Idx : true;
+    const chip = document.createElement('label');
+    chip.className = 'month-chip' + (isDefault ? ' checked' : '');
+    chip.innerHTML = `<input type="checkbox" ${isDefault ? 'checked' : ''} value="${m}"> ${m}`;
+    chip.querySelector('input').addEventListener('change', (e) => {
+      chip.classList.toggle('checked', e.target.checked);
+      updateSelectedMonths();
+    });
+    checksWrap.appendChild(chip);
+  });
+
+  document.getElementById('selectAllMonths').onclick = () => {
+    checksWrap.querySelectorAll('input').forEach(i => { i.checked = true; i.closest('.month-chip').classList.add('checked'); });
+    updateSelectedMonths();
+  };
+  document.getElementById('clearMonths').onclick = () => {
+    checksWrap.querySelectorAll('input').forEach(i => { i.checked = false; i.closest('.month-chip').classList.remove('checked'); });
+    updateSelectedMonths();
+  };
+  document.getElementById('applyRange').onclick = () => {
+    const fromIdx = RAW.months.indexOf(rangeFrom.value);
+    const toIdx = RAW.months.indexOf(rangeTo.value);
+    const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
+    checksWrap.querySelectorAll('input').forEach((i, idx) => {
+      const checked = idx >= lo && idx <= hi;
+      i.checked = checked;
+      i.closest('.month-chip').classList.toggle('checked', checked);
+    });
+    updateSelectedMonths();
+  };
+
+  // Quick-select periods
+  const QUICK_PERIODS = [
+    { label: 'Q1 FY26', months: ['Apr-25','May-25','Jun-25'] },
+    { label: 'Q2 FY26', months: ['Jul-25','Aug-25','Sep-25'] },
+    { label: 'H1 FY26', months: ['Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25'] },
+    { label: 'Q3 FY26', months: ['Oct-25','Nov-25','Dec-25'] },
+    { label: 'Q4 FY26', months: ['Jan-26','Feb-26','Mar-26'] },
+    { label: 'H2 FY26', months: ['Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26'] },
+    { label: 'FY26',    months: ['Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25','Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26'] },
+    { label: 'Q1 FY27', months: ['Apr-26','May-26','Jun-26'] },
+    { label: 'Q2 FY27', months: ['Jul-26','Aug-26','Sep-26'] },
+    { label: 'FY27 YTD', months: RAW.months.filter(m => { const idx = RAW.months.indexOf('Apr-26'); return idx >= 0 && RAW.months.indexOf(m) >= idx; }) },
+  ];
+
+  const qWrap = document.getElementById('quickSelectBtns');
+  qWrap.innerHTML = '';
+  QUICK_PERIODS.forEach(period => {
+    const validMonths = period.months.filter(m => RAW.months.includes(m));
+    if (!validMonths.length) return;
+    const btn = document.createElement('button');
+    btn.textContent = period.label;
+    btn.style.cssText = 'font-family:inherit;font-size:11px;font-weight:600;padding:4px 10px;border:1.5px solid var(--border);border-radius:20px;background:transparent;color:var(--text-secondary);cursor:pointer;white-space:nowrap;';
+    btn.onmouseover = () => btn.style.background = 'var(--bg-2)';
+    btn.onmouseout = () => btn.style.background = 'transparent';
+    btn.onclick = () => {
+      const set = new Set(validMonths);
+      checksWrap.querySelectorAll('input').forEach(i => {
+        const checked = set.has(i.value);
+        i.checked = checked;
+        i.closest('.month-chip').classList.toggle('checked', checked);
+      });
+      updateSelectedMonths();
+    };
+    qWrap.appendChild(btn);
+  });
+}
+function updateSelectedMonths() {
+  const checked = Array.from(document.querySelectorAll('#monthChecks input:checked')).map(i => i.value);
+  selectedMonths = RAW.months.filter(m => checked.includes(m));
+  renderKPIs();
+  renderPLSummary();
+  renderTrendChart();
+  renderRatiosGrid();
+  renderCumulative();
+}
+
+/* ---------- Tabs ---------- */
+function initTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+
+function render() {
+  renderKPIs();
+  renderMonthSelector();
+  renderPLSummary();
+  renderTrendControls();
+  renderTrendChart();
+  renderRatiosGrid();
+  renderCumulativeControls();
+  renderCumulative();
+  renderTable();
+}
+
+/* ---------- AI Insights ---------- */
+function initInsightMonths() {
+  const months = RAW ? RAW.months : [];
+  const from = document.getElementById('ai-from');
+  const to = document.getElementById('ai-to');
+  if (!from || !to || !months.length) return;
+  from.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+  to.innerHTML = months.map((m,i) => `<option value="${m}" ${i===months.length-1?'selected':''}>${m}</option>`).join('');
+}
+
+function buildMISContext(selMonths) {
+  const lines = [];
+  lines.push('Snackible MIS Dashboard — P&L Data');
+  lines.push('Months: ' + selMonths.join(', '));
+  lines.push('');
+  getDisplayRows().forEach(row => {
+    const isPct = row.label.trim().startsWith('%');
+    const vals = selMonths.map(m => {
+      const v = row.values[m];
+      if (v === null || v === undefined) return '—';
+      return isPct ? v.toFixed(1) + '%' : fmtFull(v);
+    });
+    lines.push(row.label + ': ' + vals.join(' | '));
+  });
+  return lines.join('\n');
+}
+
+async function runAiInsight() {
+  const fromMonth = document.getElementById('ai-from').value;
+  const toMonth = document.getElementById('ai-to').value;
+  const question = document.getElementById('ai-question').value.trim();
+  if (!question) { alert('Please enter a question.'); return; }
+
+  const allMonths = RAW.months;
+  const fromIdx = allMonths.indexOf(fromMonth);
+  const toIdx = allMonths.indexOf(toMonth);
+  const selMonths = allMonths.slice(Math.min(fromIdx, toIdx), Math.max(fromIdx, toIdx) + 1);
+
+  const resultEl = document.getElementById('ai-result');
+  resultEl.innerHTML = `<div class="card" style="padding:24px;display:flex;align-items:center;gap:12px;color:var(--text-secondary);font-size:13px;">
+    <div style="width:20px;height:20px;border:3px solid var(--border);border-top-color:#3ABCA2;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
+    Analysing your data...
+  </div>`;
+
+  const context = buildMISContext(selMonths);
+  const prompt = `You are a financial analyst for Snackible, an Indian D2C millet snack brand. You have access to the monthly MIS P&L data below covering channels like Blinkit, Zepto, Instamart, Amazon, Shopify, B2B, and GT/MT.
+
+DATA:
+${context}
+
+All monetary values are in Indian Rupees (₹). Answer the following question concisely and insightfully in 150-250 words. Use specific numbers from the data. Format with short paragraphs, no bullet points:
+${question}`;
+
+  try {
+    const res = await fetch('/api/insights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const text = data.result || data.text || 'No response received.';
+    resultEl.innerHTML = `<div class="card" style="padding:24px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">AI Analysis · ${fromMonth} to ${toMonth}</div>
+      <div style="font-size:14px;line-height:1.8;color:var(--text-primary);">${text.split('\n\n').join('</p><p style="margin-top:12px">').split('\n').join('<br>')}</div>
+      <div style="margin-top:16px;font-size:11px;color:var(--text-secondary);border-top:1px solid var(--border);padding-top:12px;">Generated by Claude · ${selMonths.length} month(s) of data</div>
+    </div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div class="card" style="padding:24px;border:1.5px solid #FCA5A5;">
+      <div style="color:#DC2626;font-size:13px;">Error: ${e.message}</div>
+    </div>`;
+  }
+}
+
+initTabs();
+loadData().then(() => { initInsightMonths(); }).catch(err => {
+  document.querySelector('.shell').innerHTML = `<div class="empty-state">Could not load data.<br><span class="mono" style="color:#F87171;">${err.message}</span></div>`;
+});
+</script>
+
+</body>
+</html>
