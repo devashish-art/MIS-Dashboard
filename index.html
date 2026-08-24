@@ -65,7 +65,7 @@
     border-radius: 999px;
   }
 
-  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 32px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 32px; }
   .kpi-card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
   .kpi-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; font-weight: 500; }
   .kpi-value { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
@@ -147,7 +147,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   @media (max-width: 900px) {
-    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
   }
 </style>
 </head>
@@ -307,7 +307,8 @@ const KPI_ROWS = [
   { key: 'Gross margin', label: 'Gross Margin' },
   { key: 'Total CM1', label: 'CM1' },
   { key: 'Total CM2', label: 'CM2' },
-  { key: 'EBITDA', label: 'EBITDA' }
+  { key: 'EBITDA', label: 'EBITDA' },
+  { key: 'PBT and Depreciation', label: 'PBT & Dep' }
 ];
 
 const RATIO_DEFINITIONS = [
