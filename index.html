@@ -1652,8 +1652,8 @@ function updateSelectedMonths() {
   renderTrendChart();
   renderRatiosGrid();
   renderCumulative();
+  renderTable();
 }
-
 /* ---------- Tabs ---------- */
 function initTabs() {
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1662,10 +1662,10 @@ function initTabs() {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'table') renderTable();
     });
   });
 }
-
 function render() {
   renderKPIs();
   renderMonthSelector();
